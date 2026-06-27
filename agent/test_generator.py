@@ -1,20 +1,25 @@
-import google.generativeai as genai
+from google import genai
 import requests
 import json
 import os
 from dotenv import load_dotenv
 
 load_dotenv()
-genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
-model = genai.GenerativeModel("gemini-1.5-flash")
+
+client = genai.Client(
+    api_key=os.getenv("GEMINI_API_KEY")
+)
+
 
 def fetch_pr_diff(diff_url: str) -> str:
     headers = {
         "Authorization": f"token {os.getenv('GITHUB_TOKEN')}",
         "Accept": "application/vnd.github.v3.diff"
     }
+
     response = requests.get(diff_url, headers=headers)
     return response.text[:4000]
+
 
 def generate_test_cases(pr_title: str, pr_body: str, diff: str) -> dict:
     prompt = f"""
@@ -44,7 +49,12 @@ Return ONLY this JSON structure, nothing else, no markdown:
   "summary": "one sentence describing the biggest risk in this PR"
 }}
 """
-    response = model.generate_content(prompt)
+
+    response = client.models.generate_content(
+        model="gemini-2.5-flash",
+        contents=prompt,
+    )
+
     raw = response.text.strip()
 
     # Strip markdown if Gemini wraps it anyway
@@ -52,7 +62,7 @@ Return ONLY this JSON structure, nothing else, no markdown:
         raw = raw.split("```")[1]
         if raw.startswith("json"):
             raw = raw[4:]
-    
+
     return json.loads(raw.strip())
 
 
@@ -65,9 +75,11 @@ if __name__ == "__main__":
 +         return create_jwt_token(user.id)
 +     return None
 """
+
     result = generate_test_cases(
         pr_title="Add login endpoint",
         pr_body="Implements JWT-based login for users",
         diff=fake_diff
     )
+
     print(json.dumps(result, indent=2))
