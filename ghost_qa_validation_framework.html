@@ -1,0 +1,115 @@
+
+<style>
+  .vf { padding: 1rem 0; font-family: var(--font-sans); }
+  .q-card { background: var(--surface-2); border: 0.5px solid var(--border); border-radius: 12px; margin-bottom: 10px; overflow: hidden; }
+  .q-header { padding: 0.85rem 1.25rem; display: flex; align-items: center; gap: 12px; border-bottom: 0.5px solid var(--border); }
+  .q-num { width: 26px; height: 26px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 500; flex-shrink: 0; }
+  .q-num.pass { background: #eaf3de; color: #3B6D11; }
+  .q-num.warn { background: #FAEEDA; color: #854F0B; }
+  .q-num.fail { background: #FCEBEB; color: #A32D2D; }
+  .q-title { font-size: 14px; font-weight: 500; color: var(--text-primary); }
+  .q-body { padding: 0.85rem 1.25rem; }
+  .q-answer { font-size: 13px; color: var(--text-secondary); line-height: 1.6; margin-bottom: 8px; }
+  .verdict-pill { display: inline-block; font-size: 12px; font-weight: 500; padding: 3px 10px; border-radius: 20px; }
+  .v-pass { background: #eaf3de; color: #3B6D11; }
+  .v-warn { background: #FAEEDA; color: #854F0B; }
+  .v-fail { background: #FCEBEB; color: #A32D2D; }
+  .gap-note { font-size: 12px; color: #854F0B; margin-top: 6px; }
+  .summary { background: var(--surface-1); border: 0.5px solid var(--border-strong); border-radius: 12px; padding: 1rem 1.25rem; margin-top: 16px; display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+  .summary-text { font-size: 14px; font-weight: 500; color: var(--text-primary); }
+  .summary-sub { font-size: 13px; color: var(--text-secondary); margin-top: 3px; }
+  .score-big { font-size: 26px; font-weight: 500; color: #3B6D11; white-space: nowrap; }
+  .pills-row { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+</style>
+
+<div class="vf">
+
+  <div class="q-card">
+    <div class="q-header">
+      <div class="q-num pass">1</div>
+      <div class="q-title">What painful problem are you solving?</div>
+    </div>
+    <div class="q-body">
+      <div class="q-answer">AI-assisted development (Copilot, Cursor, Claude Code) has made engineers 3–5× faster at writing code — but test suites haven't kept pace. PRs ship without tests. Existing tests go stale because AI-generated code changes structure rapidly. Flaky tests waste 20–30% of CI pipeline time with no intelligent triage. Startups without a QA team are flying blind into production.</div>
+      <span class="verdict-pill v-pass">Passes — specific, acute, growing pain</span>
+    </div>
+  </div>
+
+  <div class="q-card">
+    <div class="q-header">
+      <div class="q-num pass">2</div>
+      <div class="q-title">Who is your customer?</div>
+    </div>
+    <div class="q-body">
+      <div class="q-answer">Primary: SaaS startups (10–100 engineers) with no dedicated QA team, shipping AI-assisted code daily. They feel the pain every sprint but have no budget or headcount to fix it with humans. Secondary: mid-size SaaS with a 2–3 person QA team drowning in a regression backlog they can never clear.</div>
+      <div class="pills-row">
+        <span class="verdict-pill v-pass">Primary segment is clear</span>
+        <span class="verdict-pill v-warn">Secondary is vague — sharpen later</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="q-card">
+    <div class="q-header">
+      <div class="q-num warn">3</div>
+      <div class="q-title">Who are your competitors?</div>
+    </div>
+    <div class="q-body">
+      <div class="q-answer">Testim/Mabl (record-and-replay, no requirement awareness), Applitools (visual regression only), Copilot test suggestions (IDE-only, not autonomous), Playwright/Cypress + AI plugins (dev must configure and run manually). None of them close the full loop: read intent → generate tests → execute → triage → flag gaps — without human input at every step.</div>
+      <span class="verdict-pill v-warn">Gap is real but narrow — one well-funded competitor entering this space kills the moat</span>
+      <div class="gap-note">Risk: GitHub Copilot or Cursor adding autonomous test agents in 2025–2026 collapses your differentiation. You need a defensible angle beyond "also AI."</div>
+    </div>
+  </div>
+
+  <div class="q-card">
+    <div class="q-header">
+      <div class="q-num pass">4</div>
+      <div class="q-title">Why would someone switch to you?</div>
+    </div>
+    <div class="q-body">
+      <div class="q-answer">Three concrete switching triggers: (1) A bad production release burns the team — they need something smarter, fast. (2) The team scales from 5 to 25 engineers and their test suite becomes unmanageable. (3) They adopt Copilot/Cursor and realise AI-generated code comes with zero test coverage by default. Lock-in: Ghost QA learns your repo's risk patterns over time — switching means starting from zero again.</div>
+      <span class="verdict-pill v-pass">Switching triggers are specific and realistic</span>
+    </div>
+  </div>
+
+  <div class="q-card">
+    <div class="q-header">
+      <div class="q-num warn">5</div>
+      <div class="q-title">How will you get your first 10 customers?</div>
+    </div>
+    <div class="q-body">
+      <div class="q-answer">Hackathon → public GitHub repo → UiPath community (4M+ devs) → Hacker News "Show HN" → r/devops and Cursor/Copilot Discord communities. First users come from developers who find the repo, connect it to their own project, and see it catch a real bug before they do.</div>
+      <span class="verdict-pill v-warn">Channel is plausible but not proven — "post on HN" is not a strategy</span>
+      <div class="gap-note">Missing: a specific outreach plan. Who will you DM? Which Discord server? Which GitHub repo maintainers? Needs 3 concrete first contacts, not a broadcast plan.</div>
+    </div>
+  </div>
+
+  <div class="q-card">
+    <div class="q-header">
+      <div class="q-num warn">6</div>
+      <div class="q-title">How will you make your first money?</div>
+    </div>
+    <div class="q-body">
+      <div class="q-answer">Usage-based SaaS: Free (3 repos, 100 runs/month) → Starter $49/month → Team $199/month. First dollar path: hackathon win drives visibility, GitHub repo is top-of-funnel, free tier converts serious users, $49 plan captures the first paying customer.</div>
+      <span class="verdict-pill v-warn">Pricing logic is sound, monetisation path is slow</span>
+      <div class="gap-note">Risk: free tier users never convert. You need a hard value gate — something compelling enough in the paid tier that a startup actively loses something by staying free. "Unlimited repos" is weak. "Risk report with severity scoring + Slack alerts" is stronger.</div>
+    </div>
+  </div>
+
+  <div class="summary">
+    <div>
+      <div class="summary-text">Validation score</div>
+      <div class="summary-sub">3 clear passes · 3 need sharpening · 0 hard failures</div>
+      <div class="pills-row">
+        <span class="verdict-pill v-pass">Problem — strong</span>
+        <span class="verdict-pill v-pass">Customer — clear</span>
+        <span class="verdict-pill v-pass">Switch reason — solid</span>
+        <span class="verdict-pill v-warn">Competition moat — fragile</span>
+        <span class="verdict-pill v-warn">First 10 — needs contacts</span>
+        <span class="verdict-pill v-warn">Monetisation gate — too weak</span>
+      </div>
+    </div>
+    <div class="score-big">4.5 / 6</div>
+  </div>
+
+</div>

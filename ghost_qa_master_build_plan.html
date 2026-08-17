@@ -1,0 +1,195 @@
+
+<style>
+  * { box-sizing: border-box; }
+  .bp { font-family: var(--font-sans); padding: 1rem 0; }
+  .section-label { font-size: 11px; font-weight: 500; letter-spacing: 0.08em; color: var(--text-muted); text-transform: uppercase; margin: 1.5rem 0 0.6rem; }
+  .layer-card { border: 0.5px solid var(--border); border-radius: 12px; overflow: hidden; margin-bottom: 8px; }
+  .layer-header { padding: 0.7rem 1rem; display: flex; align-items: center; gap: 10px; }
+  .layer-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  .layer-name { font-size: 14px; font-weight: 500; color: var(--text-primary); }
+  .layer-role { font-size: 12px; color: var(--text-secondary); margin-left: auto; }
+  .layer-body { padding: 0.6rem 1rem 0.8rem 2.4rem; border-top: 0.5px solid var(--border); background: var(--surface-1); }
+  .tech-row { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 6px; }
+  .tech-pill { font-size: 12px; padding: 2px 9px; border-radius: 20px; font-family: var(--font-mono); }
+  .learn-note { font-size: 12px; color: var(--text-secondary); line-height: 1.5; }
+  .dot-blue { background: #2a78d6; }
+  .dot-purple { background: #534AB7; }
+  .dot-teal { background: #1D9E75; }
+  .dot-amber { background: #BA7517; }
+  .dot-gray { background: #888780; }
+  .pill-blue { background: #E6F1FB; color: #0C447C; }
+  .pill-purple { background: #EEEDFE; color: #3C3489; }
+  .pill-teal { background: #E1F5EE; color: #085041; }
+  .pill-amber { background: #FAEEDA; color: #633806; }
+  .pill-gray { background: #F1EFE8; color: #444441; }
+  .week-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; margin-top: 6px; }
+  .week-box { border-radius: 8px; border: 0.5px solid var(--border); padding: 0.5rem 0.4rem; }
+  .wk-num { font-size: 10px; color: var(--text-muted); margin-bottom: 3px; }
+  .wk-title { font-size: 11px; font-weight: 500; color: var(--text-primary); line-height: 1.3; }
+  .wk-sub { font-size: 10px; color: var(--text-secondary); margin-top: 2px; line-height: 1.3; }
+  .w1 { background: #E6F1FB; border-color: #B5D4F4; }
+  .w2 { background: #EEEDFE; border-color: #CECBF6; }
+  .w3 { background: #EEEDFE; border-color: #CECBF6; }
+  .w4 { background: #E1F5EE; border-color: #9FE1CB; }
+  .w5 { background: #E1F5EE; border-color: #9FE1CB; }
+  .w6 { background: #FAEEDA; border-color: #FAC775; }
+  .w7 { background: #eaf3de; border-color: #C0DD97; }
+  .wk-num.w1c { color: #185FA5; }
+  .wk-num.w2c { color: #534AB7; }
+  .wk-num.w3c { color: #534AB7; }
+  .wk-num.w4c { color: #0F6E56; }
+  .wk-num.w5c { color: #0F6E56; }
+  .wk-num.w6c { color: #854F0B; }
+  .wk-num.w7c { color: #3B6D11; }
+  .milestone { background: var(--surface-2); border: 0.5px solid var(--border); border-radius: 8px; padding: 0.5rem 0.75rem; margin-top: 8px; display: flex; align-items: center; gap: 8px; }
+  .ms-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .ms-text { font-size: 12px; color: var(--text-secondary); }
+  .ms-label { font-size: 12px; font-weight: 500; color: var(--text-primary); }
+  .blocker-box { background: #FCEBEB; border: 0.5px solid #F7C1C1; border-radius: 10px; padding: 0.7rem 1rem; margin-top: 10px; }
+  .blocker-title { font-size: 12px; font-weight: 500; color: #A32D2D; margin-bottom: 4px; }
+  .blocker-item { font-size: 12px; color: #791F1F; line-height: 1.6; }
+  .action-box { background: #eaf3de; border: 0.5px solid #C0DD97; border-radius: 10px; padding: 0.7rem 1rem; margin-top: 8px; }
+  .action-title { font-size: 12px; font-weight: 500; color: #3B6D11; margin-bottom: 4px; }
+  .action-item { font-size: 12px; color: #27500A; line-height: 1.8; }
+</style>
+
+<div class="bp">
+
+  <div class="section-label">What Ghost QA is — 5 layers</div>
+
+  <div class="layer-card">
+    <div class="layer-header">
+      <div class="layer-dot dot-blue"></div>
+      <div class="layer-name">Layer 1 — Trigger</div>
+      <div class="layer-role">GitHub webhook</div>
+    </div>
+    <div class="layer-body">
+      <div class="tech-row">
+        <span class="tech-pill pill-blue">GitHub Webhooks</span>
+        <span class="tech-pill pill-blue">UiPath API Workflows</span>
+        <span class="tech-pill pill-blue">Python Flask / FastAPI</span>
+      </div>
+      <div class="learn-note">Every time a PR is opened or a commit pushed, GitHub sends a signal. This layer catches it and starts the agent. This is your entry point into the whole system.</div>
+    </div>
+  </div>
+
+  <div class="layer-card">
+    <div class="layer-header">
+      <div class="layer-dot dot-purple"></div>
+      <div class="layer-name">Layer 2 — Brain</div>
+      <div class="layer-role">LLM agent reads intent</div>
+    </div>
+    <div class="layer-body">
+      <div class="tech-row">
+        <span class="tech-pill pill-purple">Claude API / OpenAI</span>
+        <span class="tech-pill pill-purple">UiPath Agent Builder</span>
+        <span class="tech-pill pill-purple">Claude Code (bonus pts)</span>
+      </div>
+      <div class="learn-note">The agent reads the PR diff and any linked ticket. It understands WHAT changed and WHY, then generates test cases targeting what could break. This is the core of Ghost QA's intelligence.</div>
+    </div>
+  </div>
+
+  <div class="layer-card">
+    <div class="layer-header">
+      <div class="layer-dot dot-teal"></div>
+      <div class="layer-name">Layer 3 — Execution</div>
+      <div class="layer-role">UiPath Test Cloud runs tests</div>
+    </div>
+    <div class="layer-body">
+      <div class="tech-row">
+        <span class="tech-pill pill-teal">UiPath Test Cloud</span>
+        <span class="tech-pill pill-teal">UiPath Studio (test cases)</span>
+        <span class="tech-pill pill-teal">Target SaaS app</span>
+      </div>
+      <div class="learn-note">The generated test cases are executed against your target app inside UiPath Test Cloud. Results come back as pass/fail with details. This is the platform usage judges will scrutinise most.</div>
+    </div>
+  </div>
+
+  <div class="layer-card">
+    <div class="layer-header">
+      <div class="layer-dot dot-amber"></div>
+      <div class="layer-name">Layer 4 — Human gate</div>
+      <div class="layer-role">Action Center approval</div>
+    </div>
+    <div class="layer-body">
+      <div class="tech-row">
+        <span class="tech-pill pill-amber">UiPath Action Center</span>
+        <span class="tech-pill pill-amber">UiPath Orchestrator</span>
+      </div>
+      <div class="learn-note">Before the test suite runs in full, a human (the dev or QA lead) reviews and approves it via Action Center. This is mandatory for the hackathon — it satisfies the human-in-the-loop requirement judges check for.</div>
+    </div>
+  </div>
+
+  <div class="layer-card">
+    <div class="layer-header">
+      <div class="layer-dot dot-gray"></div>
+      <div class="layer-name">Layer 5 — Output</div>
+      <div class="layer-role">Risk report + PR comment</div>
+    </div>
+    <div class="layer-body">
+      <div class="tech-row">
+        <span class="tech-pill pill-gray">GitHub API</span>
+        <span class="tech-pill pill-gray">Slack webhook (optional)</span>
+        <span class="tech-pill pill-gray">HTML Risk Report</span>
+      </div>
+      <div class="learn-note">Results are posted back to the GitHub PR as a comment: which tests passed, which failed, what risk was detected. This closes the loop and makes the demo visual and concrete.</div>
+    </div>
+  </div>
+
+  <div class="section-label">7-week build plan</div>
+
+  <div class="week-grid">
+    <div class="week-box w1">
+      <div class="wk-num w1c">Week 1</div>
+      <div class="wk-title">Setup & foundations</div>
+      <div class="wk-sub">UiPath Labs access, target app chosen, GitHub repo created</div>
+    </div>
+    <div class="week-box w2">
+      <div class="wk-num w2c">Week 2</div>
+      <div class="wk-title">Layer 1 — Trigger</div>
+      <div class="wk-sub">GitHub webhook → UiPath API Workflow working end-to-end</div>
+    </div>
+    <div class="week-box w3">
+      <div class="wk-num w3c">Week 3</div>
+      <div class="wk-title">Layer 2 — Brain</div>
+      <div class="wk-sub">LLM reads PR diff, outputs test cases as structured JSON</div>
+    </div>
+    <div class="week-box w4">
+      <div class="wk-num w4c">Week 4</div>
+      <div class="wk-title">Layer 3 — Execution</div>
+      <div class="wk-sub">Test cases run in UiPath Test Cloud, results captured</div>
+    </div>
+    <div class="week-box w5">
+      <div class="wk-num w5c">Week 5</div>
+      <div class="wk-title">Layer 4 — Human gate</div>
+      <div class="wk-sub">Action Center approval flow wired up and tested</div>
+    </div>
+    <div class="week-box w6">
+      <div class="wk-num w6c">Week 6</div>
+      <div class="wk-title">Layer 5 + Polish</div>
+      <div class="wk-sub">Risk report, PR comment, full end-to-end test run</div>
+    </div>
+    <div class="week-box w7">
+      <div class="wk-num w7c">Week 7</div>
+      <div class="wk-title">Demo + Submit</div>
+      <div class="wk-sub">Record video, write README, submit on Devpost</div>
+    </div>
+  </div>
+
+  <div class="section-label">Your immediate blockers — resolve before writing code</div>
+
+  <div class="blocker-box">
+    <div class="blocker-title">3 things to decide this week</div>
+    <div class="blocker-item">1. What is your target app? (the SaaS app Ghost QA will test against)</div>
+    <div class="blocker-item">2. Solo or team? (max 4 people — affects what you can build in 7 weeks)</div>
+    <div class="blocker-item">3. Request UiPath Labs access now — takes up to 3 business days</div>
+  </div>
+
+  <div class="action-box">
+    <div class="action-title">Your action items for today</div>
+    <div class="action-item">1. Go to forms.office.com/e/uZBc5TezXA and request UiPath Labs access</div>
+    <div class="action-item">2. Register on Devpost for UiPath AgentHack (select Track 3)</div>
+    <div class="action-item">3. Tell me your target app decision — everything else unlocks from there</div>
+  </div>
+
+</div>
