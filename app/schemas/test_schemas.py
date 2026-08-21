@@ -1,7 +1,10 @@
 from pydantic import BaseModel, Field
 from typing import Optional, List, Any
 from enum import Enum
-from app.models import TestType, TestPriority, ApprovalStatus, TestOutcome, FailureType, HealStatus, RiskLevel
+from app.models import (
+    TestType, TestPriority, ApprovalStatus, TestCaseStatus, TestOutcome,
+    FailureType, HealStatus, RiskLevel
+)
 
 
 class TestStepSchema(BaseModel):

@@ -277,7 +277,7 @@ Return ONLY this JSON structure:
                 {
                     "id": "TC-003",
                     "title": "Login with non-existent user",
-                    "type": "functional",
+                    "type": "edge_case",
                     "priority": "p1_high",
                     "steps": [
                         {"action": "Navigate to login page", "selector": "#login-page", "value": "", "assertion": ""},
@@ -306,7 +306,7 @@ Return ONLY this JSON structure:
                 {
                     "id": "TC-005",
                     "title": "SQL injection resistance in login",
-                    "type": "security",
+                    "type": "edge_case",
                     "priority": "p0_critical",
                     "steps": [
                         {"action": "Navigate to login page", "selector": "#login-page", "value": "", "assertion": ""},

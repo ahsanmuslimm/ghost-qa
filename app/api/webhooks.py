@@ -9,11 +9,13 @@ from app.services.approval import ApprovalService
 from app.services.executor import ExecutorService
 from app.services.risk import RiskEngine
 from app.services.healing import HealingService
+from app.services.slack import SlackService
 from app.database import init_db, get_db
 from sqlalchemy.orm import Session
 from app.models import (
     PipelineRun, PipelineStatus, RiskLevel, TestCase, TestResult,
-    Organisation, Repository, ApprovalStatus, TestOutcome, FailureType
+    Organisation, Repository, ApprovalStatus, TestOutcome, FailureType,
+    TestCaseStatus
 )
 from app.schemas.test_schemas import RiskReportSchema
 import uuid
@@ -27,6 +29,7 @@ approval_service = ApprovalService()
 executor_service = ExecutorService()
 risk_engine = RiskEngine()
 healing_service = HealingService()
+slack_service = SlackService()
 
 
 @router.post("/github")
@@ -176,7 +179,8 @@ def _run_pipeline(pipeline_run_id: str, pr_info: Dict[str, Any], db: Session) ->
                 risk_rationale=test.risk_rationale,
                 risk_level=test.risk_level,
                 generated_by="claude",
-                approval_status=ApprovalStatus.pending
+                approval_status=ApprovalStatus.pending,
+                status=TestCaseStatus.pending
             )
             db.add(tc)
         db.commit()
@@ -222,19 +226,23 @@ def _execute_tests(pipeline_run_id: str, db: Session) -> None:
     logger.info(f"Executed {len(results)} tests, stored results")
 
     # Check for failures that need healing
+    heal_types = (
+        FailureType.selector_broken, FailureType.api_contract,
+        FailureType.assertion_stale
+    )
+    heals_triggered = []
     for result in results:
-        if result.outcome == TestOutcome.failed and result.failure_type in (
-            FailureType.selector_broken, FailureType.api_contract, FailureType.assertion_failed
-        ):
+        if result.outcome == TestOutcome.failed and result.failure_type in heal_types:
             try:
                 test_case = db.query(TestCase).filter(TestCase.id == result.test_case_id).first()
                 if test_case:
-                    healing_service.create_heal_attempt(
+                    heal = healing_service.create_heal_attempt(
                         test_case_id=test_case.id,
                         failure_type=result.failure_type,
                         original_steps=test_case.steps,
                         failure_message=result.failure_message or "Unknown failure"
                     )
+                    heals_triggered.append(heal.id)
             except Exception as e:
                 logger.error(f"Heal attempt creation failed: {e}")
 
@@ -247,10 +255,22 @@ def _execute_tests(pipeline_run_id: str, db: Session) -> None:
     pipeline.completed_at = datetime.utcnow()
     db.commit()
 
+    # Slack notification (Layer 5)
+    try:
+        slack_service.send_run_summary({
+            **report.__dict__,
+            "repository": pipeline.repository.full_name if pipeline.repository else "unknown",
+            "pr_number": pipeline.github_pr_number,
+            "commit_sha": pipeline.commit_sha,
+            "heal_attempts": heals_triggered
+        })
+    except Exception as e:
+        logger.error(f"Slack notification failed: {e}")
+
     # Post to GitHub
     try:
         repo = pipeline.repository
-        comment = _format_github_comment(report)
+        comment = _format_github_comment(report, heals_triggered)
         github_service.post_pr_comment(
             owner=repo.full_name.split("/")[0],
             repo=repo.full_name.split("/")[1],
@@ -269,7 +289,7 @@ def _execute_tests(pipeline_run_id: str, db: Session) -> None:
         logger.error(f"GitHub output failed: {e}")
 
 
-def _format_github_comment(report: RiskReportSchema) -> str:
+def _format_github_comment(report: RiskReportSchema, heal_ids: List[str] = None) -> str:
     emoji = {"low": "🟢", "medium": "🟡", "high": "🟠", "critical": "🔴"}.get(report.risk_level.value, "⚪")
     comment = f"""## 👻 Ghost QA Report
 
@@ -311,4 +331,12 @@ def _format_github_comment(report: RiskReportSchema) -> str:
             comment += f"- {rec}\n"
 
     comment += f"\n*Pipeline Run: `{report.pipeline_run_id}`*"
+
+    if heal_ids:
+        comment += "\n\n### Self-Healing Proposals\n"
+        for hid in heal_ids:
+            comment += f"- <details><summary>Heal proposal {hid[:8]}</summary>\n"
+            comment += f"A fix has been proposed for a failing test. <a href='#'>Review and accept</a>\n"
+            comment += "</details>\n"
+
     return comment

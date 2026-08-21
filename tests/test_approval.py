@@ -2,7 +2,10 @@ import pytest
 import uuid
 import app.database as db_module
 from app.services.approval import ApprovalService
-from app.models import TestCase, ApprovalStatus, PipelineRun, PipelineStatus, Organisation, Repository
+from app.models import (
+    TestCase, ApprovalStatus, TestCaseStatus, PipelineRun, PipelineStatus,
+    Organisation, Repository
+)
 
 
 class _TestSessionWrapper:
@@ -32,7 +35,8 @@ class TestApproval:
 
         tc = TestCase(
             id="TC-001", pipeline_run_id=pipeline.id,
-            title="Test", steps='[]', approval_status=ApprovalStatus.pending
+            title="Test", steps='[]', approval_status=ApprovalStatus.pending,
+            status=TestCaseStatus.pending
         )
         test_db.add(tc); test_db.commit()
 
@@ -45,6 +49,9 @@ class TestApproval:
 
         tc = test_db.query(TestCase).filter(TestCase.id == "TC-001").first()
         assert tc.approval_status == ApprovalStatus.approved
+        assert tc.status == TestCaseStatus.approved
+        assert tc.approved_by is not None
+        assert tc.approved_at is not None
 
         db_module.SessionLocal = original
 
@@ -60,7 +67,8 @@ class TestApproval:
 
         tc = TestCase(
             id="TC-001", pipeline_run_id=pipeline.id,
-            title="Test", steps='[]', approval_status=ApprovalStatus.pending
+            title="Test", steps='[]', approval_status=ApprovalStatus.pending,
+            status=TestCaseStatus.pending
         )
         test_db.add(tc); test_db.commit()
 
@@ -73,6 +81,7 @@ class TestApproval:
 
         tc = test_db.query(TestCase).filter(TestCase.id == "TC-001").first()
         assert tc.approval_status == ApprovalStatus.rejected
+        assert tc.status == TestCaseStatus.rejected
 
         db_module.SessionLocal = original
 
@@ -89,7 +98,8 @@ class TestApproval:
         for i in range(3):
             tc = TestCase(
                 id=f"TC-{i+1}", pipeline_run_id=pipeline.id,
-                title=f"Test {i}", steps='[]', approval_status=ApprovalStatus.pending
+                title=f"Test {i}", steps='[]', approval_status=ApprovalStatus.pending,
+                status=TestCaseStatus.pending
             )
             test_db.add(tc)
         test_db.commit()
@@ -119,8 +129,8 @@ class TestApproval:
         pipeline = PipelineRun(id=str(uuid.uuid4()), repository_id=repo.id, github_pr_number=1, commit_sha="abc")
         test_db.add(pipeline); test_db.commit()
 
-        tc1 = TestCase(id="TC-001", pipeline_run_id=pipeline.id, title="Test1", steps='[]', approval_status=ApprovalStatus.pending)
-        tc2 = TestCase(id="TC-002", pipeline_run_id=pipeline.id, title="Test2", steps='[]', approval_status=ApprovalStatus.rejected)
+        tc1 = TestCase(id="TC-001", pipeline_run_id=pipeline.id, title="Test1", steps='[]', approval_status=ApprovalStatus.pending, status=TestCaseStatus.pending)
+        tc2 = TestCase(id="TC-002", pipeline_run_id=pipeline.id, title="Test2", steps='[]', approval_status=ApprovalStatus.rejected, status=TestCaseStatus.rejected)
         test_db.add(tc1); test_db.add(tc2); test_db.commit()
 
         original = db_module.SessionLocal

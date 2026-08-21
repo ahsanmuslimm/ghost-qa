@@ -3,7 +3,7 @@ import uuid
 from app.services.risk import RiskEngine
 from app.models import (
     TestCase, TestResult, PipelineRun, PipelineStatus, TestOutcome,
-    RiskLevel, TestPriority, TestType, FailureType, ApprovalStatus
+    RiskLevel, TestPriority, TestType, FailureType, ApprovalStatus, TestCaseStatus
 )
 from app.schemas.test_schemas import TestDebtFinding
 
@@ -20,6 +20,7 @@ def _create_test_case(db, pipeline_id, test_id, title, priority, risk_level, out
         risk_level=risk_level,
         risk_rationale="Test",
         approval_status=ApprovalStatus.approved,
+        status=TestCaseStatus.passed,
         outcome=outcome,
         failure_type=failure_type
     )

@@ -1,7 +1,10 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.database import get_db
-from app.models import PipelineRun, TestCase, TestResult, HealAttempt, PipelineStatus, ApprovalStatus, TestOutcome
+from app.models import (
+    PipelineRun, TestCase, TestResult, HealAttempt,
+    PipelineStatus, ApprovalStatus, TestCaseStatus, TestOutcome
+)
 from typing import List, Optional
 from app.schemas.test_schemas import RiskReportSchema
 
@@ -57,6 +60,8 @@ def get_run_tests(run_id: str, db: Session = Depends(get_db)):
             "risk_level": t.risk_level.value if t.risk_level else None,
             "risk_rationale": t.risk_rationale,
             "approval_status": t.approval_status.value if t.approval_status else None,
+            "status": t.status.value if t.status else None,
+            "approved_by": t.approved_by,
             "outcome": t.outcome.value if t.outcome else None,
             "failure_step": t.failure_step,
             "failure_message": t.failure_message,

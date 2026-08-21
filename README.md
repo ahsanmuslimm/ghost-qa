@@ -170,6 +170,9 @@ When `DEMO_MODE=true`, all external services use mock implementations:
 - **UiPath**: Mock executor simulates PASS/FAIL/TIMEOUT with random outcomes
 - **Action Center**: Tests are auto-approved
 - **GitHub Output**: PR comments and commit status are logged but not posted
+- **Slack**: Notifications logged but not sent
+- **Xaml Generator**: XAML preview logged but not uploaded
+- **4-hr Escalation / 24-hr Auto-Cancel**: Action Center SLA timer logged but not enforced
 
 This allows the entire pipeline to run end-to-end without any external credentials.
 
@@ -178,6 +181,8 @@ When real credentials are configured and `DEMO_MODE=false`:
 - Claude AI generates actual test cases
 - Real UiPath Test Cloud executes tests
 - Human approval is required via Action Center or API
+- Slack notifications are sent on pipeline completion
+- XAML test files are generated and uploaded to UiPath Test Cloud
 
 ## GitHub Webhook Setup
 
@@ -266,7 +271,7 @@ Reports are available:
 
 ## Self-Healing
 
-When a test fails with a qualifying failure type (`selector_broken`, `api_contract`, `assertion_failed`), Ghost QA can propose a healing fix:
+When a test fails with a qualifying failure type (`selector_broken`, `api_contract`, `assertion_stale`), Ghost QA can propose a healing fix:
 
 ### Flow
 

@@ -10,13 +10,14 @@ from app.database import Base
 
 class OrganisationPlan(str, enum.Enum):
     free = "free"
-    pro = "pro"
-    enterprise = "enterprise"
+    starter = "starter"
+    team = "team"
 
 
 class RepositoryTier(str, enum.Enum):
-    standard = "standard"
-    premium = "premium"
+    free = "free"
+    starter = "starter"
+    team = "team"
 
 
 class PipelineStatus(str, enum.Enum):
@@ -39,9 +40,8 @@ class RiskLevel(str, enum.Enum):
 class TestType(str, enum.Enum):
     functional = "functional"
     regression = "regression"
+    edge_case = "edge_case"
     integration = "integration"
-    smoke = "smoke"
-    security = "security"
 
 
 class TestPriority(str, enum.Enum):
@@ -57,6 +57,16 @@ class ApprovalStatus(str, enum.Enum):
     rejected = "rejected"
 
 
+class TestCaseStatus(str, enum.Enum):
+    pending = "pending"
+    approved = "approved"
+    rejected = "rejected"
+    running = "running"
+    passed = "passed"
+    failed = "failed"
+    healed = "healed"
+
+
 class TestOutcome(str, enum.Enum):
     passed = "passed"
     failed = "failed"
@@ -67,17 +77,18 @@ class TestOutcome(str, enum.Enum):
 class FailureType(str, enum.Enum):
     selector_broken = "selector_broken"
     api_contract = "api_contract"
+    assertion_stale = "assertion_stale"
     assertion_failed = "assertion_failed"
     timeout = "timeout"
+    network = "network"
     unknown = "unknown"
 
 
 class HealStatus(str, enum.Enum):
     proposed = "proposed"
-    approved = "approved"
+    accepted = "accepted"
     rejected = "rejected"
     verified = "verified"
-    failed = "failed"
 
 
 class Organisation(Base):
@@ -88,6 +99,7 @@ class Organisation(Base):
     github_org_id = Column(String, unique=True, nullable=True)
     billing_email = Column(String, nullable=True)
     plan = Column(SQLEnum(OrganisationPlan), default=OrganisationPlan.free)
+    stripe_customer_id = Column(String, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
     repositories = relationship("Repository", back_populates="organisation")
@@ -102,7 +114,7 @@ class Repository(Base):
     full_name = Column(String, nullable=False, index=True)
     default_branch = Column(String, default="main")
     webhook_secret = Column(String, nullable=True)
-    tier = Column(SQLEnum(RepositoryTier), default=RepositoryTier.standard)
+    tier = Column(SQLEnum(RepositoryTier), default=RepositoryTier.free)
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
@@ -143,7 +155,10 @@ class TestCase(Base):
     risk_level = Column(SQLEnum(RiskLevel), default=RiskLevel.medium)
     risk_rationale = Column(Text, nullable=True)
     generated_by = Column(String, default="claude")
+    status = Column(SQLEnum(TestCaseStatus), default=TestCaseStatus.pending, index=True)
     approval_status = Column(SQLEnum(ApprovalStatus), default=ApprovalStatus.pending, index=True)
+    approved_by = Column(String, nullable=True)
+    approved_at = Column(DateTime, nullable=True)
     uipath_test_id = Column(String, nullable=True)
     outcome = Column(SQLEnum(TestOutcome), nullable=True, index=True)
     failure_step = Column(String, nullable=True)
@@ -159,6 +174,13 @@ class TestCase(Base):
     test_results = relationship("TestResult", back_populates="test_case", cascade="all, delete-orphan")
     heal_attempts = relationship("HealAttempt", back_populates="test_case", cascade="all, delete-orphan")
 
+    @property
+    def status_display(self):
+        """Return display status combining approval and outcome."""
+        if self.outcome:
+            return self.outcome.value
+        return self.approval_status.value
+
 
 class TestResult(Base):
     __tablename__ = "test_results"
@@ -172,9 +194,11 @@ class TestResult(Base):
     screenshot_url = Column(String, nullable=True)
     duration_ms = Column(Integer, nullable=True)
     robot_id = Column(String, nullable=True)
+    heal_attempt_id = Column(String, ForeignKey("heal_attempts.id"), nullable=True, index=True)
     executed_at = Column(DateTime, default=datetime.utcnow, index=True)
 
     test_case = relationship("TestCase", back_populates="test_results")
+    heal_attempt = relationship("HealAttempt", back_populates="test_results")
 
 
 class HealAttempt(Base):
@@ -191,9 +215,12 @@ class HealAttempt(Base):
     verified_at = Column(DateTime, nullable=True)
 
     test_case = relationship("TestCase", back_populates="heal_attempts")
+    test_results = relationship("TestResult", back_populates="heal_attempt", cascade="all, delete-orphan")
 
 
 # Indexes for common queries
 Index("ix_pipeline_runs_repo_status", PipelineRun.repository_id, PipelineRun.status)
-Index("ix_test_cases_run_approval", TestCase.pipeline_run_id, TestCase.approval_status)
+Index("ix_pipeline_runs_commit_sha", PipelineRun.commit_sha)
+Index("ix_test_cases_run_priority", TestCase.pipeline_run_id, TestCase.priority)
 Index("ix_test_results_test_outcome", TestResult.test_case_id, TestResult.outcome)
+Index("ix_heal_attempts_test_status", HealAttempt.test_case_id, HealAttempt.status)

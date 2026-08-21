@@ -1,8 +1,9 @@
 import json
 import logging
+from datetime import datetime
 from typing import List, Optional, Dict, Any
 from app.config import settings
-from app.models import TestCase, ApprovalStatus
+from app.models import TestCase, ApprovalStatus, TestCaseStatus
 from app.schemas.test_schemas import TestCaseSchema
 
 logger = logging.getLogger(__name__)
@@ -37,7 +38,7 @@ class ApprovalService:
         finally:
             db.close()
 
-    def approve_test(self, test_id: str) -> Dict[str, Any]:
+    def approve_test(self, test_id: str, approved_by: str = "system") -> Dict[str, Any]:
         from app.database import SessionLocal
         from app.models import TestCase as TCModel
         db = SessionLocal()
@@ -46,6 +47,9 @@ class ApprovalService:
             if not test:
                 return {"success": False, "error": "Test not found"}
             test.approval_status = ApprovalStatus.approved
+            test.status = TestCaseStatus.approved
+            test.approved_by = approved_by
+            test.approved_at = datetime.utcnow()
             db.commit()
             return {"success": True, "test_id": test_id, "status": "approved"}
         finally:
@@ -60,12 +64,13 @@ class ApprovalService:
             if not test:
                 return {"success": False, "error": "Test not found"}
             test.approval_status = ApprovalStatus.rejected
+            test.status = TestCaseStatus.rejected
             db.commit()
             return {"success": True, "test_id": test_id, "status": "rejected"}
         finally:
             db.close()
 
-    def approve_all(self, pipeline_run_id: str) -> Dict[str, Any]:
+    def approve_all(self, pipeline_run_id: str, approved_by: str = "system") -> Dict[str, Any]:
         from app.database import SessionLocal
         from app.models import TestCase as TCModel
         db = SessionLocal()
@@ -77,6 +82,9 @@ class ApprovalService:
             count = 0
             for test in tests:
                 test.approval_status = ApprovalStatus.approved
+                test.status = TestCaseStatus.approved
+                test.approved_by = approved_by
+                test.approved_at = datetime.utcnow()
                 count += 1
             db.commit()
             return {"success": True, "approved_count": count}

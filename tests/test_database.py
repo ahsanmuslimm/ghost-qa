@@ -3,7 +3,7 @@ import uuid
 from app.models import (
     Organisation, Repository, PipelineRun, TestCase, TestResult, HealAttempt,
     PipelineStatus, RiskLevel, TestType, TestPriority, ApprovalStatus,
-    TestOutcome, FailureType, HealStatus
+    TestCaseStatus, TestOutcome, FailureType, HealStatus
 )
 
 
@@ -66,7 +66,8 @@ class TestDatabaseModels:
             risk_level=RiskLevel.high,
             risk_rationale="Auth is critical",
             generated_by="claude",
-            approval_status=ApprovalStatus.pending
+            approval_status=ApprovalStatus.pending,
+            status=TestCaseStatus.pending
         )
         test_db.add(tc)
         test_db.commit()
@@ -82,7 +83,8 @@ class TestDatabaseModels:
             pipeline_run_id=pipeline.id,
             title="Test",
             steps='[]',
-            approval_status=ApprovalStatus.approved
+            approval_status=ApprovalStatus.approved,
+            status=TestCaseStatus.approved
         )
         test_db.add(tc)
         test_db.commit()
@@ -106,7 +108,8 @@ class TestDatabaseModels:
             pipeline_run_id=pipeline.id,
             title="Test",
             steps='[]',
-            approval_status=ApprovalStatus.approved
+            approval_status=ApprovalStatus.approved,
+            status=TestCaseStatus.approved
         )
         test_db.add(tc)
         test_db.commit()
@@ -124,6 +127,42 @@ class TestDatabaseModels:
         test_db.commit()
         assert heal.test_case_id == tc.id
         assert heal.status == HealStatus.proposed
+        assert heal.status != HealStatus.accepted
+
+    def test_test_result_with_heal_attempt(self, test_db, org_repo_pipeline):
+        """TestResult should link to heal attempts."""
+        pipeline = org_repo_pipeline["pipeline"]
+        tc = TestCase(
+            id="TC-001",
+            pipeline_run_id=pipeline.id,
+            title="Test",
+            steps='[]',
+            approval_status=ApprovalStatus.approved,
+            status=TestCaseStatus.approved
+        )
+        test_db.add(tc)
+        test_db.commit()
+        heal = HealAttempt(
+            id=str(uuid.uuid4()),
+            test_case_id=tc.id,
+            failure_type=FailureType.selector_broken,
+            original_steps="[]",
+            proposed_steps="[]",
+            llm_rationale="Fixed selector",
+            status=HealStatus.accepted
+        )
+        test_db.add(heal)
+        test_db.commit()
+        result = TestResult(
+            id=str(uuid.uuid4()),
+            test_case_id=tc.id,
+            outcome=TestOutcome.passed,
+            heal_attempt_id=heal.id
+        )
+        test_db.add(result)
+        test_db.commit()
+        assert result.heal_attempt_id == heal.id
+        assert heal.test_case_id == tc.id
 
     def test_relationships(self, test_db, org_repo_pipeline):
         """Models should have proper relationships."""
@@ -135,6 +174,7 @@ class TestDatabaseModels:
             pipeline_run_id=pipeline.id,
             title="Test",
             steps='[]',
+            status=TestCaseStatus.approved
         )
         test_db.add(tc)
         test_db.commit()

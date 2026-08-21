@@ -40,7 +40,7 @@ class TestExecution:
             pipeline_run_id=str(uuid.uuid4()),
             title="Test that fails",
             steps='[]',
-            test_type=TestType.security,
+            test_type=TestType.edge_case,
             priority=TestPriority.p0_critical,
             generated_by="test",
             approval_status=ApprovalStatus.approved
@@ -64,7 +64,7 @@ class TestExecution:
             priority=TestPriority.p0_critical,
         )
         found_timeout = False
-        for _ in range(20):
+        for _ in range(50):
             result = executor.execute_test(tc)
             if result.failure_type == FailureType.timeout:
                 found_timeout = True

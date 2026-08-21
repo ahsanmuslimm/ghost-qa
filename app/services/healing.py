@@ -4,7 +4,10 @@ import uuid
 from datetime import datetime
 from typing import List, Dict, Any, Optional
 from app.config import settings
-from app.models import HealAttempt, HealStatus, FailureType, TestCase, TestResult, TestOutcome, ApprovalStatus
+from app.models import (
+    HealAttempt, HealStatus, FailureType, TestCase, TestResult,
+    TestOutcome, ApprovalStatus, TestCaseStatus
+)
 from app.database import SessionLocal
 from app.services.ai_brain import AIBrainService
 from app.services.executor import ExecutorService
@@ -65,9 +68,9 @@ class HealingService:
             heal = db.query(HealAttempt).filter(HealAttempt.id == heal_id).first()
             if not heal:
                 return {"success": False, "error": "Heal attempt not found"}
-            heal.status = HealStatus.approved
+            heal.status = HealStatus.accepted
             db.commit()
-            return {"success": True, "heal_id": heal_id, "status": "approved"}
+            return {"success": True, "heal_id": heal_id, "status": "accepted"}
         finally:
             db.close()
 
@@ -109,7 +112,8 @@ class HealingService:
                 expected_result=test_case.expected_result,
                 risk_rationale=test_case.risk_rationale,
                 generated_by="heal",
-                approval_status=ApprovalStatus.approved
+                approval_status=ApprovalStatus.approved,
+                status=TestCaseStatus.approved
             )
             db.add(healed_test)
             db.commit()
@@ -117,10 +121,10 @@ class HealingService:
 
             # Execute the healed test
             results = self.executor.execute_tests([healed_test])
-            self.executor.store_results(results)
+            self.executor.store_results(results, heal_attempt_id=heal.id)
 
             result = results[0]
-            heal.status = HealStatus.verified if result.outcome == TestOutcome.passed else HealStatus.failed
+            heal.status = HealStatus.verified if result.outcome == TestOutcome.passed else HealStatus.rejected
             heal.verified_at = datetime.utcnow()
             db.commit()
 

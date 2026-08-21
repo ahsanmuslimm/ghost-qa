@@ -6,7 +6,7 @@ import uuid
 from datetime import datetime
 from typing import List, Dict, Any, Optional
 from app.config import settings
-from app.models import TestCase, TestResult, TestOutcome, FailureType
+from app.models import TestCase, TestResult, TestOutcome, FailureType, TestCaseStatus
 from app.database import SessionLocal
 from app.schemas.test_schemas import TestResultSchema
 
@@ -35,13 +35,13 @@ class MockExecutor:
         if test_case.priority.value in ("p0_critical", "p1_high"):
             fail_probability = 0.4
         test_type_val = test_case.test_type.value if test_case.test_type else ""
-        if "security" in test_type_val:
-            fail_probability = 0.5
+        if test_type_val in ("edge_case", "integration"):
+            fail_probability = 0.6
 
         if random.random() < fail_probability:
             # Determine failure type
-            failure_types = [FailureType.selector_broken, FailureType.assertion_failed, FailureType.timeout]
-            weights = [0.4, 0.4, 0.2]
+            failure_types = [FailureType.selector_broken, FailureType.api_contract, FailureType.assertion_stale, FailureType.timeout]
+            weights = [0.4, 0.2, 0.2, 0.2]
             failure_type = random.choices(failure_types, weights=weights, k=1)[0]
 
             failure_messages = {
@@ -146,7 +146,7 @@ class ExecutorService:
         executor = self.mock_executor if self.demo_mode else self.uipath_executor
         return executor.execute_batch(test_cases)
 
-    def store_results(self, results: List[TestResult]) -> None:
+    def store_results(self, results: List[TestResult], heal_attempt_id: Optional[str] = None) -> None:
         db = SessionLocal()
         try:
             for result in results:
@@ -160,6 +160,7 @@ class ExecutorService:
                     screenshot_url=result.screenshot_url,
                     duration_ms=result.duration_ms,
                     robot_id=result.robot_id,
+                    heal_attempt_id=heal_attempt_id,
                     executed_at=result.executed_at
                 )
                 db.add(stored)
@@ -171,6 +172,7 @@ class ExecutorService:
                     test_case.failure_type = result.failure_type
                     test_case.duration_ms = result.duration_ms
                     test_case.executed_at = result.executed_at
+                    test_case.status = TestCaseStatus.passed if result.outcome == TestOutcome.passed else TestCaseStatus.failed
             db.commit()
         finally:
             db.close()

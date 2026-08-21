@@ -31,7 +31,7 @@ class TestAITestGeneration:
             changed_files=["a.py"], existing_tests=[]
         )
         for test in result.tests:
-            assert test.type.value in ("functional", "regression", "integration", "smoke", "security")
+            assert test.type.value in ("functional", "regression", "edge_case", "integration")
 
     def test_priorities_valid(self):
         """Priorities should be valid enum values."""

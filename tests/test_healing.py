@@ -5,7 +5,8 @@ from app.services.healing import HealingService
 from app.models import (
     TestCase, TestResult, HealAttempt, PipelineRun,
     FailureType, HealStatus, TestOutcome, TestPriority,
-    TestType, RiskLevel, ApprovalStatus, Organisation, Repository
+    TestType, RiskLevel, ApprovalStatus, TestCaseStatus,
+    Organisation, Repository
 )
 
 
@@ -22,6 +23,7 @@ def _setup_test(db, failure_type=FailureType.selector_broken):
         title="Login test", steps='[{"action": "click", "selector": "#checkout", "value": "", "assertion": ""}]',
         test_type=TestType.functional, priority=TestPriority.p1_high,
         approval_status=ApprovalStatus.approved,
+        status=TestCaseStatus.approved,
         generated_by="test"
     )
     db.add(tc); db.commit()
@@ -101,10 +103,10 @@ class TestSelfHealing:
 
         result = service.approve_heal(heal.id)
         assert result["success"] is True
-        assert result["status"] == "approved"
+        assert result["status"] == "accepted"
 
         heals = service.get_heal_attempts("TC-001")
-        assert heals[0]["status"] == "approved"
+        assert heals[0]["status"] == "accepted"
 
         db_module.SessionLocal = original_h
 
