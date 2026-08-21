@@ -17,10 +17,7 @@ class AIBrainService:
 
     def _call_claude(self, prompt: str, system_prompt: str = "", max_tokens: int = 4096) -> str:
         if self.demo_mode:
-            logger.debug(f"Demo mode: generating response for prompt of length {len(prompt)}")
-            result = self._generate_demo_response(prompt, system_prompt)
-            logger.debug(f"Demo response length: {len(result)}")
-            return result
+            return self._generate_demo_response(prompt, system_prompt)
         try:
             message = self.client.messages.create(
                 model="claude-3-5-sonnet-20240620",
@@ -109,9 +106,7 @@ Return ONLY this JSON structure, nothing else:
 }}"""
 
         raw = self._call_claude(prompt, system_prompt=system_prompt)
-        logger.debug(f"Raw response: {raw[:200]}...")
         data = self._parse_json(raw)
-        logger.debug(f"Parsed data keys: {list(data.keys())}")
         tests = []
         for t in data.get("tests", []):
             try:
@@ -128,7 +123,6 @@ Return ONLY this JSON structure, nothing else:
             except Exception as e:
                 logger.warning(f"Failed to parse test case: {e}")
                 continue
-        logger.debug(f"Returning {len(tests)} tests")
         return AITestResponse(tests=tests)
 
     def detect_test_debt(

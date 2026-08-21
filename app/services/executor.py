@@ -34,7 +34,8 @@ class MockExecutor:
         fail_probability = 0.3
         if test_case.priority.value in ("p0_critical", "p1_high"):
             fail_probability = 0.4
-        if "security" in (test_case.test_type.value or ""):
+        test_type_val = test_case.test_type.value if test_case.test_type else ""
+        if "security" in test_type_val:
             fail_probability = 0.5
 
         if random.random() < fail_probability:

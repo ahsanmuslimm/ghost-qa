@@ -78,6 +78,21 @@ async def github_webhook(request: Request):
             db.commit()
             db.refresh(repository)
 
+         # Check for duplicate webhook (idempotency)
+        existing_run = db.query(PipelineRun).filter(
+            PipelineRun.repository_id == repository.id,
+            PipelineRun.github_pr_number == pr_number,
+            PipelineRun.commit_sha == pr_info["commit_sha"],
+        ).order_by(PipelineRun.created_at.desc()).first()
+        if existing_run and (datetime.utcnow() - existing_run.created_at).total_seconds() < 300:
+            logger.info(f"Duplicate webhook received, existing pipeline run: {existing_run.id}")
+            return {
+                "status": "duplicate_ignored",
+                "pipeline_run_id": existing_run.id,
+                "pr_number": pr_number,
+                "repository": repo_full_name
+            }
+
         # Create pipeline run
         pipeline_run = PipelineRun(
             id=str(uuid.uuid4()),
