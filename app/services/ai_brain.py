@@ -2,7 +2,11 @@ import json
 import logging
 import re
 from typing import List, Dict, Any, Optional
-from anthropic import Anthropic
+try:
+    from openai import OpenAI
+    _has_openai = True
+except ImportError:
+    _has_openai = False
 from app.config import settings
 from app.schemas.test_schemas import TestCaseSchema, TestStepSchema, AITestResponse, TestDebtFinding, TestDebtReport
 from app.models import TestType, TestPriority, RiskLevel
@@ -12,23 +16,51 @@ logger = logging.getLogger(__name__)
 
 class AIBrainService:
     def __init__(self):
-        self.client = Anthropic(api_key=settings.ANTHROPIC_API_KEY) if settings.ANTHROPIC_API_KEY else None
-        self.demo_mode = settings.DEMO_MODE or not settings.ANTHROPIC_API_KEY
+        self.xai_client = None
+        self.anthropic_client = None
+        self.demo_mode = settings.DEMO_MODE or not (settings.XAI_API_KEY or settings.ANTHROPIC_API_KEY)
 
-    def _call_claude(self, prompt: str, system_prompt: str = "", max_tokens: int = 4096) -> str:
+        if settings.XAI_API_KEY and _has_openai:
+            self.xai_client = OpenAI(
+                api_key=settings.XAI_API_KEY,
+                base_url="https://api.x.ai/v1"
+            )
+        elif settings.ANTHROPIC_API_KEY:
+            try:
+                from anthropic import Anthropic
+                self.anthropic_client = Anthropic(api_key=settings.ANTHROPIC_API_KEY)
+            except ImportError:
+                logger.warning("anthropic package not installed; falling back to demo mode")
+
+    def _call_ai(self, prompt: str, system_prompt: str = "", max_tokens: int = 4096) -> str:
         if self.demo_mode:
             return self._generate_demo_response(prompt, system_prompt)
         try:
-            message = self.client.messages.create(
-                model="claude-3-5-sonnet-20240620",
-                max_tokens=max_tokens,
-                system=system_prompt,
-                messages=[{"role": "user", "content": prompt}]
-            )
-            return message.content[0].text
+            if self.xai_client:
+                model = settings.GROK_MODEL
+                messages = []
+                if system_prompt:
+                    messages.append({"role": "system", "content": system_prompt})
+                messages.append({"role": "user", "content": prompt})
+                response = self.xai_client.chat.completions.create(
+                    model=model,
+                    messages=messages,
+                    max_tokens=max_tokens
+                )
+                return response.choices[0].message.content
+            elif self.anthropic_client:
+                message = self.anthropic_client.messages.create(
+                    model="claude-3-5-sonnet-20240620",
+                    max_tokens=max_tokens,
+                    system=system_prompt,
+                    messages=[{"role": "user", "content": prompt}]
+                )
+                return message.content[0].text
+            else:
+                raise RuntimeError("No AI provider configured")
         except Exception as e:
-            logger.error(f"Claude API call failed: {e}")
-            raise
+            logger.error(f"AI API call failed: {e}")
+            return self._generate_demo_response(prompt, system_prompt)
 
     def _parse_json(self, raw: str) -> Dict[str, Any]:
         raw = raw.strip()
@@ -88,7 +120,7 @@ Return ONLY this JSON structure, nothing else:
     {{
       "id": "TC-001",
       "title": "short descriptive test title",
-      "type": "functional|regression|integration|smoke|security",
+      "type": "functional|regression|edge_case|integration",
       "priority": "p0_critical|p1_high|p2_medium|p3_low",
       "steps": [
         {{
@@ -105,7 +137,7 @@ Return ONLY this JSON structure, nothing else:
   ]
 }}"""
 
-        raw = self._call_claude(prompt, system_prompt=system_prompt)
+        raw = self._call_ai(prompt, system_prompt=system_prompt)
         data = self._parse_json(raw)
         tests = []
         for t in data.get("tests", []):
@@ -159,7 +191,7 @@ Return ONLY this JSON structure:
   ]
 }}"""
 
-        raw = self._call_claude(prompt, system_prompt=system_prompt, max_tokens=2048)
+        raw = self._call_ai(prompt, system_prompt=system_prompt, max_tokens=2048)
         data = self._parse_json(raw)
         findings = []
         for f in data.get("findings", []):
@@ -212,7 +244,7 @@ Return ONLY this JSON structure:
   "confidence": "high|medium|low"
 }}"""
 
-        raw = self._call_claude(prompt, system_prompt=system_prompt, max_tokens=2048)
+        raw = self._call_ai(prompt, system_prompt=system_prompt, max_tokens=2048)
         data = self._parse_json(raw)
         return {
             "proposed_steps": data.get("proposed_steps", original_steps),
