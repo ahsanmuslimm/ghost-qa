@@ -124,7 +124,13 @@ class GitHubService:
         if not matches:
             matches = re.findall(r"#(\d+)", body)
         if matches:
-            return self._request("GET", f"https://api.github.com/repos/{owner}/{repo}/issues/{matches[0]}")
+            try:
+                return self._request("GET", f"https://api.github.com/repos/{owner}/{repo}/issues/{matches[0]}")
+            except requests.exceptions.HTTPError as e:
+                if e.response.status_code == 404:
+                    logger.warning(f"Linked issue #{matches[0]} not found, skipping")
+                    return None
+                raise
         return None
 
     def post_pr_comment(self, owner: str, repo: str, pr_number: int, body: str) -> Dict[str, Any]:

@@ -12,6 +12,7 @@ class Settings(BaseSettings):
     APP_PORT: int = 8000
     APP_HOST: str = "0.0.0.0"
     DEMO_MODE: bool = False
+    AUTO_APPROVE: bool = True
 
     # Database
     DATABASE_URL: str = "sqlite:///./ghost_qa.db"
@@ -23,6 +24,10 @@ class Settings(BaseSettings):
 
     # Anthropic Claude
     ANTHROPIC_API_KEY: Optional[str] = None
+
+    # XAI (Grok) — alternative AI provider
+    XAI_API_KEY: Optional[str] = None
+    GROK_MODEL: str = "grok-4-1-fast-reasoning"
 
     # UiPath
     UIPATH_CLIENT_ID: Optional[str] = None

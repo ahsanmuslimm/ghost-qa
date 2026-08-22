@@ -189,7 +189,8 @@ def _run_pipeline(pipeline_run_id: str, pr_info: Dict[str, Any], db: Session) ->
         pipeline.status = PipelineStatus.awaiting_approval
         db.commit()
 
-        if settings.DEMO_MODE:
+        # Auto-approve in demo mode or if auto-approve is configured
+        if settings.DEMO_MODE or settings.AUTO_APPROVE:
             approval_service.approve_all(pipeline_run_id)
             db.expire_all()
             pipeline.status = PipelineStatus.running
