@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ghost QA Dashboard</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0a0a0f; color: #e0e0e0; }
+        .header { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); padding: 2rem; border-bottom: 1px solid #2a2a3e; }
+        .header h1 { font-size: 2rem; color: #fff; }
+        .header p { color: #888; margin-top: 0.5rem; }
+        .container { max-width: 1400px; margin: 0 auto; padding: 2rem; }
+        .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 2rem; }
+        .stat-card { background: #12121a; border: 1px solid #2a2a3e; border-radius: 8px; padding: 1.5rem; }
+        .stat-card h3 { font-size: 0.875rem; color: #888; text-transform: uppercase; letter-spacing: 0.05em; }
+        .stat-card .value { font-size: 2rem; font-weight: bold; margin-top: 0.5rem; }
+        .stat-card .value.blue { color: #4dabf7; }
+        .stat-card .value.green { color: #51cf66; }
+        .stat-card .value.red { color: #ff6b6b; }
+        .stat-card .value.yellow { color: #fcc419; }
+        .section { background: #12121a; border: 1px solid #2a2a3e; border-radius: 8px; padding: 1.5rem; margin-bottom: 2rem; }
+        .section h2 { font-size: 1.25rem; margin-bottom: 1rem; color: #fff; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { text-align: left; padding: 0.75rem; border-bottom: 1px solid #2a2a3e; }
+        th { color: #888; font-weight: 500; font-size: 0.875rem; text-transform: uppercase; }
+        tr:hover { background: #1a1a2e; }
+        .badge { display: inline-block; padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.75rem; font-weight: 500; }
+        .badge-success { background: #2b8a3e; color: #fff; }
+        .badge-warning { background: #e67700; color: #fff; }
+        .badge-danger { background: #c92a2a; color: #fff; }
+        .badge-info { background: #1864ab; color: #fff; }
+        .badge-gray { background: #495057; color: #fff; }
+        a { color: #4dabf7; text-decoration: none; }
+        a:hover { text-decoration: underline; }
+        .empty { text-align: center; padding: 3rem; color: #666; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>👻 Ghost QA Dashboard</h1>
+        <p>AI-powered QA engineer for CI/CD pipelines</p>
+    </div>
+    <div class="container">
+        <div class="stats">
+            <div class="stat-card">
+                <h3>Repositories</h3>
+                <div class="value blue" id="total-repos">-</div>
+            </div>
+            <div class="stat-card">
+                <h3>Pipeline Runs</h3>
+                <div class="value green" id="total-runs">-</div>
+            </div>
+            <div class="stat-card">
+                <h3>Recent Runs</h3>
+                <div class="value yellow" id="recent-count">-</div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>Recent Pipeline Runs</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Run ID</th>
+                        <th>Repository</th>
+                        <th>PR</th>
+                        <th>Status</th>
+                        <th>Risk</th>
+                        <th>Created</th>
+                    </tr>
+                </thead>
+                <tbody id="runs-table">
+                    <tr><td colspan="6" class="empty">Loading...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        async function loadDashboard() {
+            try {
+                const response = await fetch('/api/dashboard/overview');
+                const data = await response.json();
+                document.getElementById('total-repos').textContent = data.total_repositories;
+                document.getElementById('total-runs').textContent = data.total_pipeline_runs;
+                document.getElementById('recent-count').textContent = data.recent_runs.length;
+
+                const tbody = document.getElementById('runs-table');
+                if (data.recent_runs.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="6" class="empty">No pipeline runs yet. Trigger a webhook to get started.</td></tr>';
+                    return;
+                }
+
+                tbody.innerHTML = data.recent_runs.map(run => {
+                    const statusClass = {
+                        'queued': 'badge-gray', 'extracting': 'badge-info', 'generating': 'badge-info',
+                        'awaiting_approval': 'badge-warning', 'running': 'badge-info',
+                        'completed': 'badge-success', 'failed': 'badge-danger'
+                    }[run.status] || 'badge-gray';
+
+                    const riskClass = {
+                        'low': 'badge-success', 'medium': 'badge-warning',
+                        'high': 'badge-danger', 'critical': 'badge-danger'
+                    }[run.risk_level] || 'badge-gray';
+
+                    return `<tr>
+                        <td><a href="/report/${run.id}">${run.id.slice(0, 8)}...</a></td>
+                        <td>${run.repository}</td>
+                        <td>#${run.pr_number || '-'}</td>
+                        <td><span class="badge ${statusClass}">${run.status}</span></td>
+                        <td>${run.risk_level ? `<span class="badge ${riskClass}">${run.risk_level}</span>` : '-'}</td>
+                        <td>${run.created_at ? new Date(run.created_at).toLocaleString() : '-'}</td>
+                    </tr>`;
+                }).join('');
+            } catch (error) {
+                console.error('Failed to load dashboard:', error);
+            }
+        }
+
+        loadDashboard();
+        setInterval(loadDashboard, 30000);
+    </script>
+</body>
+</html>
