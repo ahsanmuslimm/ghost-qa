@@ -17,7 +17,7 @@ class GitHubService:
             "Authorization": f"token {self.token}",
             "Accept": "application/vnd.github.v3+json"
         }
-        self.demo_mode = settings.DEMO_MODE
+        self.demo_mode = settings.DEMO_MODE and (not self.token or self.token == "None")
 
     def verify_signature(self, payload_bytes: bytes, signature_header: str) -> bool:
         if not self.webhook_secret or not signature_header:
