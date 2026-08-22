@@ -7,6 +7,16 @@ from app.config import settings
 from app.database import init_db
 from app.api import webhooks, runs, tests, heals, dashboard
 import logging
+import os
+
+# Resolve paths relative to this file (project root)
+_project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+_static_dir = os.path.join(_project_root, "static")
+_template_dir = os.path.join(_project_root, "templates")
+
+# Ensure directories exist
+os.makedirs(_static_dir, exist_ok=True)
+os.makedirs(_template_dir, exist_ok=True)
 
 # Configure logging
 logging.basicConfig(
@@ -31,8 +41,8 @@ app.add_middleware(
 )
 
 # Static files and templates
-app.mount("/static", StaticFiles(directory="/home/kali-attacker/ghost-qa/static"), name="static")
-templates = Jinja2Templates(directory="/home/kali-attacker/ghost-qa/templates")
+app.mount("/static", StaticFiles(directory=_static_dir), name="static")
+templates = Jinja2Templates(directory=_template_dir)
 
 # Include routers
 app.include_router(webhooks.router, prefix="/api/webhooks", tags=["webhooks"])
