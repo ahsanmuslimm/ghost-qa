@@ -3,6 +3,8 @@ import logging
 import threading
 from typing import Dict, Any, List
 from fastapi import APIRouter, Request, HTTPException, Depends
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 from app.config import settings
 from app.services.github import GitHubService
 from app.services.ai_brain import AIBrainService
@@ -24,6 +26,7 @@ from datetime import datetime
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
+
 github_service = GitHubService()
 ai_service = AIBrainService()
 approval_service = ApprovalService()
@@ -48,98 +51,6 @@ def _run_pipeline_async(pipeline_run_id: str, pr_info: Dict[str, Any]) -> None:
                 db_.commit()
         finally:
             db_.close()
-    finally:
-        db.close()
-
-
-@router.post("/github")
-async def github_webhook(request: Request):
-    payload_bytes = await request.body()
-    signature = request.headers.get("X-Hub-Signature-256", "")
-    event_type = request.headers.get("X-GitHub-Event", "")
-
-    if not github_service.verify_signature(payload_bytes, signature):
-        raise HTTPException(status_code=401, detail="Invalid webhook signature")
-
-    try:
-        payload = json.loads(payload_bytes)
-    except json.JSONDecodeError:
-        raise HTTPException(status_code=400, detail="Invalid JSON payload")
-
-    if event_type != "pull_request":
-        return {"status": "ignored", "event": event_type}
-
-    action = payload.get("action", "")
-    if action not in ["opened", "synchronize", "reopened"]:
-        return {"status": "ignored", "action": action}
-
-    pr_info = github_service.extract_pr_info(payload)
-    repo_full_name = pr_info["repo_full_name"]
-    owner, repo_name = repo_full_name.split("/", 1)
-    pr_number = pr_info["pr_number"]
-
-    # Get or create organisation and repository
-    db = next(get_db())
-    try:
-        org = db.query(Organisation).first()
-        if not org:
-            org = Organisation(id=str(uuid.uuid4()), name=owner, github_org_id=str(payload.get("repository", {}).get("id", "")))
-            db.add(org)
-            db.commit()
-            db.refresh(org)
-
-        repository = db.query(Repository).filter(Repository.full_name == repo_full_name).first()
-        if not repository:
-            repository = Repository(
-                id=str(uuid.uuid4()),
-                organisation_id=org.id,
-                github_repo_id=str(payload.get("repository", {}).get("id", "")),
-                full_name=repo_full_name,
-                default_branch=pr_info.get("branch", "main")
-            )
-            db.add(repository)
-            db.commit()
-            db.refresh(repository)
-
-        # Check for duplicate webhook (idempotency)
-        existing_run = db.query(PipelineRun).filter(
-            PipelineRun.repository_id == repository.id,
-            PipelineRun.github_pr_number == pr_number,
-            PipelineRun.commit_sha == pr_info["commit_sha"],
-        ).order_by(PipelineRun.created_at.desc()).first()
-        if existing_run and (datetime.utcnow() - existing_run.created_at).total_seconds() < 300:
-            logger.info(f"Duplicate webhook received, existing pipeline run: {existing_run.id}")
-            return {
-                "status": "duplicate_ignored",
-                "pipeline_run_id": existing_run.id,
-                "pr_number": pr_number,
-                "repository": repo_full_name
-            }
-
-        # Create pipeline run
-        pipeline_run = PipelineRun(
-            id=str(uuid.uuid4()),
-            repository_id=repository.id,
-            trigger_type="github_pr",
-            github_pr_number=pr_number,
-            commit_sha=pr_info["commit_sha"],
-            diff_url=pr_info["diff_url"],
-            status=PipelineStatus.extracting
-        )
-        db.add(pipeline_run)
-        db.commit()
-        db.refresh(pipeline_run)
-
-        # Start pipeline in background thread
-        thread = threading.Thread(target=_run_pipeline_async, args=(pipeline_run.id, pr_info), daemon=True)
-        thread.start()
-
-        return {
-            "status": "pipeline_started",
-            "pipeline_run_id": pipeline_run.id,
-            "pr_number": pr_number,
-            "repository": repo_full_name
-        }
     finally:
         db.close()
 
