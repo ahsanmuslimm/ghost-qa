@@ -6,6 +6,7 @@ from fastapi import Request
 from app.config import settings
 from app.database import init_db
 from app.api import webhooks, runs, tests, heals, dashboard
+from app.middleware.auth import JWTMiddleware
 import logging
 import os
 
@@ -31,6 +32,9 @@ app = FastAPI(
     version="1.0.0"
 )
 
+# JWT Middleware
+app.add_middleware(JWTMiddleware)
+
 # CORS
 app.add_middleware(
     CORSMiddleware,
@@ -50,6 +54,7 @@ app.include_router(runs.router, prefix="/api/runs", tags=["runs"])
 app.include_router(tests.router, prefix="/api/tests", tags=["tests"])
 app.include_router(heals.router, prefix="/api/heals", tags=["heals"])
 app.include_router(dashboard.router, prefix="/api/dashboard", tags=["dashboard"])
+app.include_router(auth.router, prefix="/auth", tags=["auth"])
 
 
 @app.get("/")

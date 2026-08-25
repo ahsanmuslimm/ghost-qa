@@ -174,6 +174,7 @@ class UiPathExecutor:
             return []
 
     def execute_test(self, test_case: TestCase) -> TestResult:
+        # Fallback logic: DEMO_MODE or missing credentials → silent MockExecutor
         if self.demo_mode:
             mock = MockExecutor()
             return mock.execute_test(test_case)
@@ -185,13 +186,12 @@ class UiPathExecutor:
 
         headers = {
             "Authorization": f"Bearer {token}",
-            "Content-Type": "application/json",
             "Accept": "application/json"
         }
-        base_url = f"https://cloud.uipath.com/{self.org_id}/{self.tenant_name}"
+        base_url = f"{settings.UIPATH_TEST_MANAGER_BASE}/{self.org_id}/{self.tenant_name}"
 
         try:
-            # 1. Upload test case as XAML to Test Cloud
+            # Step 1: Generate XAML (already authenticated via _get_access_token)
             from app.services.xaml_generator import XamlGenerator
             xaml_gen = XamlGenerator()
             test_case_dict = {
@@ -205,18 +205,182 @@ class UiPathExecutor:
             }
             xaml_content = xaml_gen.generate_xaml(test_case_dict)
 
-            # 2. Create test set and trigger execution
-            # This is a simplified version; real implementation would:
-            #   - Upload XAML to Test Manager
-            #   - Create a test set
-            #   - Start execution on a test robot
-            #   - Poll for completion
-            logger.info(f"Executing test {test_case.id} in UiPath Test Cloud")
-            logger.warning("Full UiPath Test Cloud execution integration is a work in progress. Falling back to mock for execution.")
+            # Step 2: Upload XAML to Test Manager
+            upload_resp = requests.post(
+                f"{base_url}/testmanager_/api/v1/testcases",
+                headers=headers,
+                files={
+                    "file": ("test.xaml", xaml_content.encode("utf-8"), "application/xml"),
+                    "name": (None, test_case.title, "text/plain")
+                },
+                timeout=30
+            )
+            upload_resp.raise_for_status()
+            upload_data = upload_resp.json()
+            uipath_test_id = upload_data.get("Id") or upload_data.get("id")
+            if not uipath_test_id:
+                raise ValueError("Failed to extract uipath_test_id from upload response")
+            
+            # Store uipath_test_id on the TestCase record
+            db = SessionLocal()
+            try:
+                db.execute(
+                    "UPDATE test_cases SET uipath_test_id = :uipath_test_id WHERE id = :test_case_id"
+                ), {"uipath_test_id": uipath_test_id, "test_case_id": test_case.id}
+                db.commit()
+            finally:
+                db.close()
+
+            # Step 3: Create test set
+            run_id_8 = test_case.pipeline_run_id[:8] if test_case.pipeline_run_id else str(uuid.uuid4())[:8]
+            create_testset_resp = requests.post(
+                f"{base_url}/testmanager_/api/v1/testsets",
+                headers=headers,
+                json={
+                    "Name": f"GhostQA-{run_id_8}",
+                    "TestCases": [{"TestCaseId": uipath_test_id}]
+                },
+                timeout=30
+            )
+            create_testset_resp.raise_for_status()
+            testset_data = create_testset_resp.json()
+            test_set_id = testset_data.get("Id") or testset_data.get("id")
+            if not test_set_id:
+                raise ValueError("Failed to extract test_set_id from testset creation response")
+
+            # Step 4: Trigger execution
+            trigger_resp = requests.post(
+                f"{base_url}/testmanager_/api/v1/testsets/{test_set_id}/start",
+                headers=headers,
+                json={"EnvironmentId": self.environment_id},
+                timeout=30
+            )
+            trigger_resp.raise_for_status()
+            trigger_data = trigger_resp.json()
+            test_set_execution_id = trigger_data.get("TestSetExecutionId") or trigger_data.get("id")
+            if not test_set_execution_id:
+                raise ValueError("Failed to extract test_set_execution_id from trigger response")
+
+            # Step 5: Poll for completion
+            timeout_at = time.time() + settings.UIPATH_EXECUTION_TIMEOUT_SECONDS
+            poll_interval = 10
+            
+            while time.time() < timeout_at:
+                poll_resp = requests.get(
+                    f"{base_url}/testmanager_/api/v1/testsetexecutions/{test_set_execution_id}",
+                    headers=headers,
+                    timeout=30
+                )
+                poll_resp.raise_for_status()
+                poll_data = poll_resp.json()
+                
+                status = (poll_data.get("Status") or poll_data.get("status") or "").lower()
+                result_payload = poll_data.get("Result") or poll_data.get("result") or {}
+                
+                # Terminal states: Passed, Failed, Cancelled, TimedOut
+                if status in ("passed", "failed", "cancelled", "timedout", "timeout"):
+                    # Extract screenshot URL
+                    screenshot_url = (poll_data.get("ScreenshotUrl") or 
+                                     poll_data.get("screenshot_url") or 
+                                     result_payload.get("ScreenshotUrl") or 
+                                     result_payload.get("screenshot_url"))
+                    
+                    # Map result
+                    if status == "passed":
+                        outcome = TestOutcome.passed
+                        failure_type = None
+                        failure_message = None
+                    elif status in ("failed", "cancelled"):
+                        outcome = TestOutcome.failed
+                        failure_type = (result_payload.get("FailureType") or 
+                                       result_payload.get("failure_type") or 
+                                       "unknown" if status == "cancelled" else None)
+                        if failure_type is None:
+                            failure_type = "unknown"
+                        failure_message = (result_payload.get("Message") or 
+                                         result_payload.get("message") or 
+                                         ("" if status == "cancelled" else None))
+                        if status == "cancelled" and not failure_message:
+                            failure_message = "Test execution was cancelled"
+                    elif status in ("timedout", "timeout"):
+                        outcome = TestOutcome.timed_out
+                        failure_type = None
+                        failure_message = "Test execution timed out"
+                        # Cancel the test set on timeout
+                        try:
+                            requests.post(
+                                f"{base_url}/testmanager_/api/v1/testsetexecutions/{test_set_execution_id}/cancel",
+                                headers=headers,
+                                timeout=30
+                            )
+                        except Exception:
+                            pass  # Best-effort cleanup
+                    else:
+                        # Unknown status → treat as failed
+                        outcome = TestOutcome.failed
+                        failure_type = "unknown"
+                        failure_message = f"Unknown execution status: {status}"
+                    
+                    duration_ms = poll_data.get("Duration") or poll_data.get("duration")
+                    if duration_ms is None:
+                        # Calculate from start/end times if available
+                        start_time = poll_data.get("StartTime") or poll_data.get("start_time")
+                        end_time = poll_data.get("EndTime") or poll_data.get("end_time")
+                        if start_time and end_time:
+                            try:
+                                from datetime import datetime
+                                start_dt = datetime.fromisoformat(start_time.replace("Z", "+00:00"))
+                                end_dt = datetime.fromisoformat(end_time.replace("Z", "+00:00"))
+                                duration_ms = int((end_dt - start_dt).total_seconds() * 1000)
+                            except Exception:
+                                duration_ms = None
+                    
+                    # Create and return TestResult
+                    return TestResult(
+                        id=str(uuid.uuid4()),
+                        test_case_id=test_case.id,
+                        outcome=outcome,
+                        failure_step=None,
+                        failure_message=failure_message,
+                        failure_type=failure_type,
+                        screenshot_url=screenshot_url,
+                        duration_ms=duration_ms,
+                        robot_id=None,
+                        executed_at=datetime.utcnow()
+                    )
+                
+                time.sleep(poll_interval)
+            
+            # Timeout reached
+            logger.error(f"UiPath test execution timed out after {settings.UIPATH_EXECUTION_TIMEOUT_SECONDS}s for test {test_case.id}")
+            
+            # Cancel test set on timeout
+            try:
+                requests.post(
+                    f"{base_url}/testmanager_/api/v1/testsetexecutions/{test_set_execution_id}/cancel",
+                    headers=headers,
+                    timeout=30
+                )
+            except Exception:
+                pass  # Best-effort cleanup
+            
+            return TestResult(
+                id=str(uuid.uuid4()),
+                test_case_id=test_case.id,
+                outcome=TestOutcome.timed_out,
+                failure_step=None,
+                failure_message=f"Test execution timed out after {settings.UIPATH_EXECUTION_TIMEOUT_SECONDS} seconds",
+                failure_type=None,
+                screenshot_url=None,
+                duration_ms=None,
+                robot_id=None,
+                executed_at=datetime.utcnow()
+            )
+            
+        except requests.exceptions.RequestException as e:
+            logger.error(f"UiPath API request failed: {e}")
             mock = MockExecutor()
-            result = mock.execute_test(test_case)
-            result.robot_id = result.robot_id or "uipath-real"
-            return result
+            return mock.execute_test(test_case)
         except Exception as e:
             logger.error(f"UiPath test execution failed: {e}")
             mock = MockExecutor()

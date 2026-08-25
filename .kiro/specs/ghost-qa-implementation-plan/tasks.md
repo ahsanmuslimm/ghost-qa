@@ -16,13 +16,13 @@ already in use).
 
 - [ ] 1. Phase 1 — Security & Auth
 
-  - [ ] 1.1 Extend `app/config.py` with auth and JWT config fields
+  - [x] 1.1 Extend `app/config.py` with auth and JWT config fields
     - Add `SECRET_KEY: str`, `JWT_EXPIRY_MINUTES: int = Field(default=60, ge=15, le=1440)`,
       and `AUTH_USERS: str` (JSON string seeding the in-memory credential store)
     - Pydantic `Field(ge=15, le=1440)` must raise `ValidationError` on startup if value is out of range
     - _Requirements: 1.7, 1.8_
 
-  - [ ] 1.2 Implement `app/services/auth.py` — AuthService
+  - [x] 1.2 Implement `app/services/auth.py` — AuthService
     - Implement `create_token(email, role) -> dict` returning `{"token": str, "expires_in": int}`
     - Implement `verify_token(token: str) -> dict` — return decoded payload or raise `HTTPException(401)`
     - Sign/verify with HS256 using `settings.SECRET_KEY`; set expiry from `settings.JWT_EXPIRY_MINUTES`
@@ -35,13 +35,13 @@ already in use).
     - Test that `JWT_EXPIRY_MINUTES` outside 15–1440 raises at settings load time
     - _Requirements: 1.1, 1.4, 1.5, 1.8_
 
-  - [ ] 1.4 Implement `app/api/auth.py` — login router
+  - [x] 1.4 Implement `app/api/auth.py` — login router
     - `POST /auth/login`: body `{"email", "password"}`; verify against `AUTH_USERS` in-memory dict
     - 200 → `{"token": str, "expires_in": int}`; 401 → `{"detail": "Invalid credentials"}` (no field disclosure)
     - Mount router on `app/main.py` at prefix `/auth`
     - _Requirements: 1.1, 1.2_
 
-  - [ ] 1.5 Implement `app/middleware/auth.py` — JWT middleware
+  - [x] 1.5 Implement `app/middleware/auth.py` — JWT middleware
     - `BaseHTTPMiddleware` subclass; skip paths not starting with `/api/`
     - Read `Authorization: Bearer <token>`, call `auth_service.verify_token()`
     - On success: attach decoded payload to `request.state.user`
@@ -49,7 +49,7 @@ already in use).
     - Register middleware in `app/main.py`
     - _Requirements: 1.3, 1.4, 1.5, 1.6_
 
-  - [ ] 1.6 Implement `app/dependencies.py` — RBAC dependency
+  - [x] 1.6 Implement `app/dependencies.py` — RBAC dependency
     - `get_current_user(request)` — reads `request.state.user`; raises 401 if missing
     - `require_approver(user)` — raises `HTTPException(403)` if `user["role"] != "approver"` or role is unrecognised
     - Apply `require_approver` to: `POST /api/tests/{id}/approve`, `POST /api/tests/{id}/reject`,
@@ -70,7 +70,7 @@ already in use).
 
 - [ ] 2. Phase 2 — Real UiPath Execution & XAML Quality
 
-  - [ ] 2.1 Rewrite `app/services/xaml_generator.py` using `xml.etree.ElementTree`
+  - [x] 2.1 Rewrite `app/services/xaml_generator.py` using `xml.etree.ElementTree`
     - Remove the existing string-template approach
     - Build the XML tree programmatically: root `<Activity>` with `xmlns:ui="http://schemas.uipath.com/workflow/activities"` and other required namespaces
     - For each step, append one `<ui:Sequence DisplayName="Step N: {action}">` as a direct child of `<ui:FlowStep>`
@@ -98,12 +98,12 @@ already in use).
     - Test `xmlns:ui` namespace declaration is present on root
     - _Requirements: 4.1, 4.2, 4.3, 4.4, 4.5_
 
-  - [ ] 2.5 Add new config keys to `app/config.py` for UiPath execution
+  - [x] 2.5 Add new config keys to `app/config.py` for UiPath execution
     - `UIPATH_EXECUTION_TIMEOUT_SECONDS: int = 300`
     - `UIPATH_TEST_MANAGER_BASE: str = "https://cloud.uipath.com"`
     - _Requirements: 3.4, 3.9_
 
-  - [ ] 2.6 Complete `UiPathExecutor.execute_test` in `app/services/executor.py`
+  - [x] 2.6 Complete `UiPathExecutor.execute_test` in `app/services/executor.py`
     - Implement Step 2: upload XAML via `POST .../testcases` (multipart/form-data); store returned `uipath_test_id`
     - Implement Step 3: create test set via `POST .../testsets` with `{"Name": "GhostQA-{run_id[:8]}", "TestCases": [...]}`
     - Implement Step 4: trigger execution via `POST .../testsets/{id}/start` with `{"EnvironmentId": ...}`
@@ -124,7 +124,7 @@ already in use).
     - Test `screenshot_url` extracted when present; null when absent
     - _Requirements: 3.1–3.9, 12.1, 12.2_
 
-  - [ ] 2.8 Implement `app/services/action_center.py` — ActionCenterService
+  - [x] 2.8 Implement `app/services/action_center.py` — ActionCenterService
     - Add config keys to `app/config.py`: `UIPATH_ACTION_CENTER_BASE`, `APPROVAL_SLA_WARN_HOURS: int = 4`, `APPROVAL_SLA_REJECT_HOURS: int = 24`
     - Implement `create_task(pipeline_run, test_cases) -> str` — POST to UiPath Action Center; return task ID; store ID in `PipelineRun.linked_issue_id`
     - Implement `cancel_task(task_id)` — cancel a pending task
@@ -133,7 +133,7 @@ already in use).
     - Only instantiate when `DEMO_MODE=False`
     - _Requirements: 9.1, 9.2, 9.3, 9.7, 9.8_
 
-  - [ ] 2.9 Implement `app/services/sla_timer.py` — SLATimerService
+  - [x] 2.9 Implement `app/services/sla_timer.py` — SLATimerService
     - On `PipelineRun` entering `awaiting_approval` with `DEMO_MODE=False`: schedule two `threading.Timer` callbacks
       - `t = APPROVAL_SLA_WARN_HOURS * 3600`: call `SlackService.send_sla_warning(run_id, task_url)`
       - `t = APPROVAL_SLA_REJECT_HOURS * 3600`: auto-reject all pending `TestCase` records, cancel Action Center task, set `PipelineRun.status = failed` with reason `approval_timeout`
@@ -150,7 +150,7 @@ already in use).
     - Test 24h SLA callback auto-rejects all pending tests and cancels AC task
     - _Requirements: 9.1–9.8_
 
-  - [ ] 2.11 Update `templates/report.html` — screenshot thumbnails
+  - [x] 2.11 Update `templates/report.html` — screenshot thumbnails
     - When a test result has a non-null `screenshot_url`, render `<a href="{url}"><img src="{url}" width="120" /></a>`
     - _Requirements: 12.3_
 
@@ -159,12 +159,12 @@ already in use).
 
 - [ ] 3. Phase 3 — Database Migrations (Alembic)
 
-  - [ ] 3.1 Create `alembic.ini` and `alembic/env.py`
+  - [x] 3.1 Create `alembic.ini` and `alembic/env.py`
     - `alembic.ini`: standard config with `script_location = alembic`
     - `alembic/env.py`: import `settings.DATABASE_URL`, import `Base` and `app/models` (all models), set `target_metadata = Base.metadata`
     - _Requirements: 5.1_
 
-  - [ ] 3.2 Generate baseline migration `alembic/versions/001_initial_schema.py`
+  - [x] 3.2 Generate baseline migration `alembic/versions/001_initial_schema.py`
     - Run `alembic revision --autogenerate -m "initial_schema"` against a clean database and save the output
     - Manually verify the generated script includes `op.create_table` for all 6 tables: `organisations`, `repositories`, `pipeline_runs`, `test_cases`, `test_results`, `heal_attempts`
     - Verify it includes all 5 composite indexes from `app/models.py`
@@ -182,7 +182,7 @@ already in use).
 
 - [ ] 4. Phase 4 — Frontend & UX
 
-  - [ ] 4.1 Add pagination to `GET /api/runs` in `app/api/runs.py`
+  - [x] 4.1 Add pagination to `GET /api/runs` in `app/api/runs.py`
     - Add `page: int = Query(default=1, ge=1)` and `page_size: int = Query(default=20, ge=1, le=100)` parameters
     - Compute `total`, `offset`, ordered query, and `has_next = (page * page_size) < total`
     - Return response shape: `{"runs": [...], "pagination": {"total", "page", "page_size", "has_next"}}`
@@ -263,11 +263,11 @@ already in use).
     - Test `RATE_LIMIT_ENABLED=False` skips all limits (no 429 at any count)
     - _Requirements: 10.1, 10.2, 10.3, 10.4, 10.5_
 
-  - [ ] 5.3 Add `hypothesis` to `requirements.txt`
+  - [x] 5.3 Add `hypothesis` to `requirements.txt`
     - Add `hypothesis` as a pinned dependency in `requirements.txt`
     - _Requirements: 13.1_
 
-  - [ ] 5.4 Create `tests/strategies.py` — Hypothesis strategies
+  - [x] 5.4 Create `tests/strategies.py` — Hypothesis strategies
     - `test_result_strategy()` — builds `TestResult` with drawn `TestOutcome` and `TestPriority` values
     - `test_case_strategy()` — builds dicts with 0–20 steps, arbitrary string fields (empty strings, Unicode, XML special chars)
     - `step_strategy()` — builds step dicts with arbitrary `action`/`selector`/`value`/`assertion` strings

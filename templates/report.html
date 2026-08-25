@@ -35,6 +35,10 @@
         .back-link { display: inline-block; margin-bottom: 1rem; color: #4dabf7; text-decoration: none; }
         .back-link:hover { text-decoration: underline; }
         .empty { text-align: center; padding: 2rem; color: #666; }
+        .screenshot { margin-top: 0.5rem; }
+        .screenshot img { border-radius: 4px; box-shadow: 0 2px 4px rgba(0,0,0,0.3); }
+        .screenshot a { color: #4dabf7; }
+        .screenshot a:hover { color: #74c0fc; }
     </style>
 </head>
 <body>
@@ -152,12 +156,24 @@
                 } else {
                     tbody.innerHTML = tests.map(t => {
                         const outcomeClass = t.outcome === 'passed' ? 'passed' : t.outcome === 'failed' ? 'failed' : 'skipped';
+                        let screenshotHtml = '';
+                        if (t.screenshot_url) {
+                            screenshotHtml = `<tr>
+                                <td colspan="4">
+                                    <div class="screenshot">
+                                        <a href="${t.screenshot_url}" target="_blank">
+                                            <img src="${t.screenshot_url}" width="120" alt="Screenshot" loading="lazy" />
+                                        </a>
+                                    </div>
+                                </td>
+                            </tr>`;
+                        }
                         return `<tr>
                             <td>${t.title}</td>
                             <td>${t.priority || '-'}</td>
                             <td class="${outcomeClass}">${t.outcome || 'pending'}</td>
                             <td>${t.failure_message || '-'}</td>
-                        </tr>`;
+                        </tr>${screenshotHtml}`;
                     }).join('');
                 }
             } catch (error) {
