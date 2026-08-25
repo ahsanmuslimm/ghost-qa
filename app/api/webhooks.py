@@ -3,6 +3,7 @@ import logging
 import threading
 from typing import Dict, Any, List
 from fastapi import APIRouter, Request, HTTPException, Depends
+from fastapi.responses import JSONResponse
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 from app.config import settings
@@ -34,6 +35,123 @@ executor_service = ExecutorService()
 risk_engine = RiskEngine()
 healing_service = HealingService()
 slack_service = SlackService()
+
+
+@router.post("/github")
+async def handle_github_webhook(
+    request: Request,
+    payload: Dict[str, Any]
+) -> JSONResponse:
+    """Handle GitHub webhook events for pull requests."""
+    # Get headers
+    github_event = request.headers.get("X-GitHub-Event", "")
+    signature_header = request.headers.get("X-Hub-Signature-256", "")
+
+    # Verify signature
+    if not github_service.verify_signature(
+        await request.body(),
+        signature_header
+    ):
+        return JSONResponse(
+            content={"status": "invalid_signature"},
+            status_code=401
+        )
+
+    # Check event type - only handle pull_request events
+    if github_event != "pull_request":
+        return JSONResponse(
+            content={"status": "ignored"},
+            status_code=200
+        )
+
+    # Check action type - only handle opened and synchronize
+    action = payload.get("action", "")
+    if action not in ("opened", "synchronize"):
+        return JSONResponse(
+            content={"status": "ignored"},
+            status_code=200
+        )
+
+    # Extract PR info
+    pr_info = github_service.extract_pr_info(payload)
+    pr_number = pr_info["pr_number"]
+    commit_sha = pr_info["commit_sha"]
+
+    # Check for duplicates
+    db = SessionLocal()
+    try:
+        existing_run = db.query(PipelineRun).filter(
+            PipelineRun.github_pr_number == pr_number,
+            PipelineRun.commit_sha == commit_sha
+        ).first()
+
+        if existing_run:
+            return JSONResponse(
+                content={
+                    "status": "duplicate_ignored",
+                    "pipeline_run_id": existing_run.id
+                },
+                status_code=200
+            )
+
+        # Create repository if not exists
+        repo_full_name = pr_info["repo_full_name"]
+        repo = db.query(Repository).filter(
+            Repository.full_name == repo_full_name
+        ).first()
+
+        if not repo:
+            # Create org if not exists
+            org_name = pr_info["repo_owner"]
+            org = db.query(Organisation).filter(
+                Organisation.name == org_name
+            ).first()
+            if not org:
+                org = Organisation(
+                    id=str(uuid.uuid4()),
+                    name=org_name,
+                    created_at=datetime.utcnow()
+                )
+                db.add(org)
+                db.commit()
+
+            repo = Repository(
+                id=str(uuid.uuid4()),
+                organisation_id=org.id,
+                full_name=repo_full_name,
+                created_at=datetime.utcnow()
+            )
+            db.add(repo)
+            db.commit()
+
+        # Create pipeline run
+        pipeline_run_id = str(uuid.uuid4())
+        pipeline_run = PipelineRun(
+            id=pipeline_run_id,
+            repository_id=repo.id,
+            trigger_type="github_pr",
+            github_pr_number=pr_number,
+            commit_sha=commit_sha,
+            diff_url=pr_info.get("diff_url"),
+            status=PipelineStatus.queued
+        )
+        db.add(pipeline_run)
+        db.commit()
+
+        # Start async pipeline
+        _run_pipeline_async(pipeline_run_id, pr_info)
+
+        return JSONResponse(
+            content={
+                "status": "pipeline_started",
+                "pr_number": pr_number,
+                "pipeline_run_id": pipeline_run_id
+            },
+            status_code=200
+        )
+
+    finally:
+        db.close()
 
 
 def _run_pipeline_async(pipeline_run_id: str, pr_info: Dict[str, Any]) -> None:

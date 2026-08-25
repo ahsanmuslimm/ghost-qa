@@ -241,7 +241,7 @@ already in use).
     - Test 404 for unknown `org_id` and unknown `repo_id`
     - _Requirements: 14.1–14.7_
 
-  - [ ] 4.8 Phase 4 checkpoint — ensure all tests pass
+  - [x] 4.8 Phase 4 checkpoint — ensure all tests pass
     - Ensure all tests pass, ask the user if questions arise.
 
 - [ ] 5. Phase 5 — Operational Hardening
