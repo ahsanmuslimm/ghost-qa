@@ -9,12 +9,19 @@ class JWTMiddleware(BaseHTTPMiddleware):
         super().__init__(app)
         self.auth_service = AuthService()
 
+    # Routes that do not require a JWT token
+    PUBLIC_PREFIXES = (
+        "/auth/",
+        "/api/webhooks/",
+    )
+
     async def dispatch(self, request: Request, call_next):
         # Skip public routes
         if not request.url.path.startswith("/api/"):
             return await call_next(request)
-        if request.url.path == "/auth/login":
-            return await call_next(request)
+        for prefix in self.PUBLIC_PREFIXES:
+            if request.url.path.startswith(prefix):
+                return await call_next(request)
 
         # Extract token from Authorization header
         auth_header = request.headers.get("Authorization")
