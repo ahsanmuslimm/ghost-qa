@@ -154,7 +154,7 @@ already in use).
     - When a test result has a non-null `screenshot_url`, render `<a href="{url}"><img src="{url}" width="120" /></a>`
     - _Requirements: 12.3_
 
-  - [ ] 2.12 Phase 2 checkpoint — ensure all tests pass
+  - [x] 2.12 Phase 2 checkpoint — ensure all tests pass
     - Ensure all tests pass, ask the user if questions arise.
 
 - [ ] 3. Phase 3 — Database Migrations (Alembic)
@@ -177,7 +177,7 @@ already in use).
     - Run `alembic upgrade head` a second time and assert no error (idempotency)
     - _Requirements: 5.2, 5.3_
 
-  - [ ] 3.4 Phase 3 checkpoint — ensure all tests pass
+  - [-] 3.4 Phase 3 checkpoint — ensure all tests pass
     - Ensure all tests pass, ask the user if questions arise.
 
 - [ ] 4. Phase 4 — Frontend & UX
@@ -197,13 +197,13 @@ already in use).
     - Test `page_size=101` → 422; `page_size=0` → 422
     - _Requirements: 6.1–6.5_
 
-  - [ ] 4.3 Add `GET /api/dashboard/runs/{run_id}/details` endpoint in `app/api/dashboard.py`
+  - [-] 4.3 Add `GET /api/dashboard/runs/{run_id}/details` endpoint in `app/api/dashboard.py`
     - Return: `id`, `pr_number`, `commit_sha`, `status`, `risk_level`, and nested `test_cases` array
     - Each test case includes: `id`, `title`, `test_type`, `priority`, `outcome`, `failure_message`, `screenshot_url`, and `heal_attempts` array (each with `id`, `status`)
     - Return 404 if `run_id` does not exist
     - _Requirements: 8.1, 8.4_
 
-  - [ ] 4.4 Update `templates/dashboard.html` — complete frontend
+  - [-] 4.4 Update `templates/dashboard.html` — complete frontend
     - Add login form (hidden once JWT token is stored in `localStorage`); include token in `Authorization: Bearer` header on all API fetches
     - Add "Approve All" button in run rows where `status === "awaiting_approval"`;
       on success replace with "Approved" label; on failure show inline error message
@@ -221,7 +221,7 @@ already in use).
     - On network error: display error message and "Retry" button that re-calls `loadReport()`
     - _Requirements: 8.1, 8.2, 8.3, 8.4, 8.5, 8.6_
 
-  - [ ] 4.6 Implement `app/api/orgs.py` — Organisation Management API
+  - [~] 4.6 Implement `app/api/orgs.py` — Organisation Management API
     - `GET /api/orgs` → list all `Organisation` records with `id`, `name`, `plan`, `created_at`
     - `POST /api/orgs/{org_id}/repos` → create `Repository` from `{"full_name", "default_branch", "webhook_secret?"}`; return created record
     - `GET /api/orgs/{org_id}/repos` → list repos for the org with `id`, `full_name`, `default_branch`, `is_active`, `created_at`
@@ -241,12 +241,12 @@ already in use).
     - Test 404 for unknown `org_id` and unknown `repo_id`
     - _Requirements: 14.1–14.7_
 
-  - [ ] 4.8 Phase 4 checkpoint — ensure all tests pass
+  - [~] 4.8 Phase 4 checkpoint — ensure all tests pass
     - Ensure all tests pass, ask the user if questions arise.
 
 - [ ] 5. Phase 5 — Operational Hardening
 
-  - [ ] 5.1 Add rate limiting via `slowapi` in `app/main.py` and affected routers
+  - [~] 5.1 Add rate limiting via `slowapi` in `app/main.py` and affected routers
     - Add `slowapi` to `requirements.txt`
     - Add `RATE_LIMIT_ENABLED: bool = True` to `app/config.py`
     - In `app/main.py`: instantiate `Limiter(key_func=get_remote_address, enabled=settings.RATE_LIMIT_ENABLED)`, attach to `app.state.limiter`, register `RateLimitExceeded` exception handler
@@ -300,7 +300,7 @@ already in use).
     - In `tests/test_pbt.py` using `@given(tc=test_case_schema_strategy())`
     - Assert `TestCaseSchema.model_validate_json(tc.model_dump_json()) == tc`
 
-  - [ ] 5.9 Create `Dockerfile`, `docker-compose.yml`, and `.dockerignore`
+  - [x] 5.9 Create `Dockerfile`, `docker-compose.yml`, and `.dockerignore`
     - **Dockerfile**: base `python:3.11-slim`, `WORKDIR /app`, copy `requirements.txt`, `RUN pip install --no-cache-dir -r requirements.txt`, copy project, `EXPOSE 8000`
     - **ENTRYPOINT**: `["sh", "-c", "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000"]`
     - **docker-compose.yml**: `postgres:15` service with `POSTGRES_DB/USER/PASSWORD`, healthcheck (`pg_isready`), volume `pgdata`; `ghost-qa` service built from `.`, port `8000:8000`, `env_file: .env`, `DATABASE_URL` env override, `depends_on: postgres: condition: service_healthy`
@@ -308,7 +308,7 @@ already in use).
     - _Requirements: 11.1, 11.2, 11.3, 11.4, 11.5_
     - _Note: depends on Phase 3 (Alembic) being complete — the entrypoint runs `alembic upgrade head`_
 
-  - [ ] 5.10 Final checkpoint — ensure all tests pass
+  - [~] 5.10 Final checkpoint — ensure all tests pass
     - Ensure all tests pass, ask the user if questions arise.
 
 ---
