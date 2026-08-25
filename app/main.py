@@ -5,7 +5,7 @@ from fastapi.templating import Jinja2Templates
 from fastapi import Request
 from app.config import settings
 from app.database import init_db
-from app.api import webhooks, runs, tests, heals, dashboard
+from app.api import webhooks, runs, tests, heals, dashboard, auth
 from app.middleware.auth import JWTMiddleware
 import logging
 import os
