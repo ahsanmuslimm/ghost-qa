@@ -22,11 +22,19 @@ class Settings(BaseSettings):
     # GitHub
     GITHUB_TOKEN: Optional[str] = None
     GITHUB_WEBHOOK_SECRET: Optional[str] = None
+    GITHUB_API_BASE: str = "https://api.github.com"
 
-    # Anthropic Claude
+    # AI providers — Gemini is primary (free tier), Anthropic/XAI are fallbacks.
+    # AI_PROVIDER: "auto" | "gemini" | "anthropic" | "xai" | "demo"
+    AI_PROVIDER: str = "auto"
+    GEMINI_API_KEY: Optional[str] = None
+    GEMINI_MODEL: str = "gemini-2.5-flash"
+
+    # Anthropic Claude (optional fallback)
     ANTHROPIC_API_KEY: Optional[str] = None
+    ANTHROPIC_MODEL: str = "claude-3-5-sonnet-20240620"
 
-    # XAI (Grok) — alternative AI provider
+    # XAI (Grok) — optional fallback
     XAI_API_KEY: Optional[str] = None
     GROK_MODEL: str = "grok-4-1-fast-reasoning"
 
@@ -39,6 +47,7 @@ class Settings(BaseSettings):
     UIPATH_TEST_FOLDER: str = "GhostQA"
     UIPATH_EXECUTION_TIMEOUT_SECONDS: int = 300
     UIPATH_TEST_MANAGER_BASE: str = "https://cloud.uipath.com"
+    UIPATH_AUTH_URL: str = "https://cloud.uipath.com/identity/connect/token"
 
     # Slack (optional)
     SLACK_BOT_TOKEN: Optional[str] = None

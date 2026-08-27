@@ -7,6 +7,12 @@ try:
     _has_openai = True
 except ImportError:
     _has_openai = False
+try:
+    from google import genai
+    from google.genai import types as genai_types
+    _has_genai = True
+except ImportError:
+    _has_genai = False
 from app.config import settings
 from app.schemas.test_schemas import TestCaseSchema, TestStepSchema, AITestResponse, TestDebtFinding, TestDebtReport
 from app.models import TestType, TestPriority, RiskLevel
@@ -16,10 +22,19 @@ logger = logging.getLogger(__name__)
 
 class AIBrainService:
     def __init__(self):
+        self.gemini_client = None
         self.xai_client = None
         self.anthropic_client = None
 
-        # Validate XAI API key format (must start with 'xai-')
+        # Gemini (primary provider — free tier)
+        gemini_key = settings.GEMINI_API_KEY
+        if gemini_key:
+            if _has_genai:
+                self.gemini_client = genai.Client(api_key=gemini_key)
+            else:
+                logger.warning("google-genai package not installed; Gemini unavailable")
+
+        # XAI (Grok) fallback — key must start with 'xai-' (or 'sk-' for proxies)
         xai_key = settings.XAI_API_KEY
         if xai_key and _has_openai and xai_key.startswith(("xai-", "sk-")):
             self.xai_client = OpenAI(
@@ -29,25 +44,57 @@ class AIBrainService:
         elif xai_key:
             logger.warning(f"XAI API key format unrecognized, falling back to demo mode")
 
-        # Validate Anthropic API key format (must start with 'sk-ant-')
+        # Anthropic Claude fallback — key must start with 'sk-ant-'
         anthropic_key = settings.ANTHROPIC_API_KEY
         if anthropic_key and anthropic_key.startswith("sk-ant-"):
             try:
                 from anthropic import Anthropic
                 self.anthropic_client = Anthropic(api_key=anthropic_key)
             except ImportError:
-                logger.warning("anthropic package not installed; falling back to demo mode")
+                logger.warning("anthropic package not installed; Anthropic unavailable")
         elif anthropic_key:
             logger.warning(f"Anthropic API key format unrecognized, falling back to demo mode")
 
-        # Demo mode if no valid AI provider configured
-        self.demo_mode = settings.DEMO_MODE or (not self.xai_client and not self.anthropic_client)
+        # Resolve active provider: explicit AI_PROVIDER wins, otherwise auto
+        # precedence Gemini → Anthropic → XAI → demo.
+        self.provider = self._resolve_provider()
+        self.demo_mode = settings.DEMO_MODE or self.provider == "demo"
+        if not self.demo_mode:
+            logger.info(f"AI Brain active with provider: {self.provider}")
+
+    def _resolve_provider(self) -> str:
+        requested = (settings.AI_PROVIDER or "auto").lower()
+        available = {
+            "gemini": self.gemini_client is not None,
+            "anthropic": self.anthropic_client is not None,
+            "xai": self.xai_client is not None,
+        }
+        if requested == "demo":
+            return "demo"
+        if requested in available:
+            if available[requested]:
+                return requested
+            logger.warning(f"AI_PROVIDER={requested} requested but not configured, using auto selection")
+        for name in ("gemini", "anthropic", "xai"):
+            if available[name]:
+                return name
+        return "demo"
 
     def _call_ai(self, prompt: str, system_prompt: str = "", max_tokens: int = 4096) -> str:
         if self.demo_mode:
             return self._generate_demo_response(prompt, system_prompt)
         try:
-            if self.xai_client:
+            if self.provider == "gemini":
+                response = self.gemini_client.models.generate_content(
+                    model=settings.GEMINI_MODEL,
+                    contents=prompt,
+                    config=genai_types.GenerateContentConfig(
+                        system_instruction=system_prompt or None,
+                        max_output_tokens=max_tokens,
+                    )
+                )
+                return response.text
+            elif self.provider == "xai":
                 model = settings.GROK_MODEL
                 messages = []
                 if system_prompt:
@@ -60,9 +107,9 @@ class AIBrainService:
                     timeout=5
                 )
                 return response.choices[0].message.content
-            elif self.anthropic_client:
+            elif self.provider == "anthropic":
                 message = self.anthropic_client.messages.create(
-                    model="claude-3-5-sonnet-20240620",
+                    model=settings.ANTHROPIC_MODEL,
                     max_tokens=max_tokens,
                     system=system_prompt,
                     messages=[{"role": "user", "content": prompt}]

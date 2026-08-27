@@ -7,6 +7,7 @@ from typing import Dict, Any, Optional
 from fastapi import HTTPException
 from pydantic import BaseModel
 from app.config import settings
+from app.utils.datetime_utils import utcnow
 
 
 class TokenPayload(BaseModel):
@@ -49,7 +50,7 @@ class AuthService:
         if role not in self.VALID_ROLES:
             raise ValueError(f"Invalid role. Must be one of: {', '.join(self.VALID_ROLES)}")
 
-        now = datetime.utcnow()
+        now = utcnow()
         expiry = now + timedelta(minutes=self._expiry_minutes)
 
         payload = {
@@ -72,7 +73,7 @@ class AuthService:
         try:
             payload = jwt.decode(token, self._secret, algorithms=["HS256"])
             # Verify expiry
-            if datetime.utcnow().timestamp() > payload.get("exp", 0):
+            if utcnow().timestamp() > payload.get("exp", 0):
                 raise HTTPException(status_code=401, detail="Token expired")
             return payload
         except PyJWTError:

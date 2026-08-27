@@ -6,14 +6,12 @@ from fastapi import APIRouter, Request, HTTPException, Depends
 from fastapi.responses import JSONResponse
 from slowapi import Limiter
 from slowapi.util import get_remote_address
+from pydantic import ValidationError
 from app.config import settings
-from app.services.github import GitHubService
-from app.services.ai_brain import AIBrainService
-from app.services.approval import ApprovalService
-from app.services.executor import ExecutorService
-from app.services.risk import RiskEngine
-from app.services.healing import HealingService
-from app.services.slack import SlackService
+from app.services import (
+    github_service, ai_service, approval_service, executor_service,
+    risk_engine, healing_service, slack_service
+)
 from app.database import init_db, get_db, SessionLocal
 from sqlalchemy.orm import Session
 from app.models import (
@@ -22,19 +20,13 @@ from app.models import (
     TestCaseStatus
 )
 from app.schemas.test_schemas import RiskReportSchema
+from app.schemas.webhook_schemas import GitHubPRWebhookPayload, MAX_WEBHOOK_PAYLOAD_BYTES
 import uuid
 from datetime import datetime
+from app.utils.datetime_utils import utcnow
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
-
-github_service = GitHubService()
-ai_service = AIBrainService()
-approval_service = ApprovalService()
-executor_service = ExecutorService()
-risk_engine = RiskEngine()
-healing_service = HealingService()
-slack_service = SlackService()
 
 
 @router.post("/github")
@@ -47,17 +39,22 @@ async def handle_github_webhook(
     github_event = request.headers.get("X-GitHub-Event", "")
     signature_header = request.headers.get("X-Hub-Signature-256", "")
 
+    # Read the raw body once for signature verification and size limits
+    body = await request.body()
+    if len(body) > MAX_WEBHOOK_PAYLOAD_BYTES:
+        return JSONResponse(
+            content={"status": "payload_too_large"},
+            status_code=413
+        )
+
     # Verify signature
-    if not github_service.verify_signature(
-        await request.body(),
-        signature_header
-    ):
+    if not github_service.verify_signature(body, signature_header):
         return JSONResponse(
             content={"status": "invalid_signature"},
             status_code=401
         )
 
-    # Check event type - only handle pull_request events
+    # Check event type - only handling pull_request events
     if github_event != "pull_request":
         return JSONResponse(
             content={"status": "ignored"},
@@ -70,6 +67,16 @@ async def handle_github_webhook(
         return JSONResponse(
             content={"status": "ignored"},
             status_code=200
+        )
+
+    # Validate payload structure before processing
+    try:
+        GitHubPRWebhookPayload.model_validate(payload)
+    except ValidationError as e:
+        logger.warning(f"Rejected malformed webhook payload: {e.errors()[:3]}")
+        return JSONResponse(
+            content={"status": "invalid_payload"},
+            status_code=400
         )
 
     # Extract PR info
@@ -110,7 +117,7 @@ async def handle_github_webhook(
                 org = Organisation(
                     id=str(uuid.uuid4()),
                     name=org_name,
-                    created_at=datetime.utcnow()
+                    created_at=utcnow()
                 )
                 db.add(org)
                 db.commit()
@@ -119,7 +126,7 @@ async def handle_github_webhook(
                 id=str(uuid.uuid4()),
                 organisation_id=org.id,
                 full_name=repo_full_name,
-                created_at=datetime.utcnow()
+                created_at=utcnow()
             )
             db.add(repo)
             db.commit()
@@ -179,7 +186,7 @@ def _run_pipeline(pipeline_run_id: str, pr_info: Dict[str, Any], db: Session) ->
         return
 
     pipeline.status = PipelineStatus.extracting
-    pipeline.started_at = datetime.utcnow()
+    pipeline.started_at = utcnow()
     db.commit()
 
     owner = pr_info["repo_owner"]
@@ -263,7 +270,7 @@ def _execute_tests(pipeline_run_id: str, db: Session) -> None:
 
     if not approved_tests:
         pipeline.status = PipelineStatus.completed
-        pipeline.completed_at = datetime.utcnow()
+        pipeline.completed_at = utcnow()
         db.commit()
         return
 
@@ -298,7 +305,7 @@ def _execute_tests(pipeline_run_id: str, db: Session) -> None:
 
     pipeline.risk_level = report.risk_level
     pipeline.status = PipelineStatus.completed
-    pipeline.completed_at = datetime.utcnow()
+    pipeline.completed_at = utcnow()
     db.commit()
 
     # Slack notification (Layer 5)

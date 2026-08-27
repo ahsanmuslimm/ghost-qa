@@ -8,6 +8,8 @@ from sqlalchemy.orm import sessionmaker
 os.environ["DEMO_MODE"] = "true"
 os.environ["DATABASE_URL"] = "sqlite:///./test_ghost_qa.db"
 os.environ["ANTHROPIC_API_KEY"] = ""
+os.environ["GEMINI_API_KEY"] = ""
+os.environ["XAI_API_KEY"] = ""
 os.environ["GITHUB_TOKEN"] = "test-token"
 os.environ["GITHUB_WEBHOOK_SECRET"] = ""
 

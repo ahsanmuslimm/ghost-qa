@@ -10,6 +10,7 @@ from app.config import settings
 from app.models import TestCase, TestResult, TestOutcome, FailureType, TestCaseStatus
 from app.database import SessionLocal
 from app.schemas.test_schemas import TestResultSchema
+from app.utils.datetime_utils import utcnow
 
 logger = logging.getLogger(__name__)
 
@@ -27,7 +28,7 @@ class MockExecutor:
                 test_case_id=test_case.id,
                 outcome=TestOutcome.passed,
                 duration_ms=duration,
-                executed_at=datetime.utcnow()
+                executed_at=utcnow()
             )
 
         fail_probability = 0.3
@@ -66,7 +67,7 @@ class MockExecutor:
                 failure_message=failure_messages.get(failure_type, "Test failed"),
                 failure_type=failure_type,
                 duration_ms=duration,
-                executed_at=datetime.utcnow()
+                executed_at=utcnow()
             )
         else:
             return TestResult(
@@ -74,7 +75,7 @@ class MockExecutor:
                 test_case_id=test_case.id,
                 outcome=TestOutcome.passed,
                 duration_ms=duration,
-                executed_at=datetime.utcnow()
+                executed_at=utcnow()
             )
 
     def execute_batch(self, test_cases: List[TestCase]) -> List[TestResult]:
@@ -346,7 +347,7 @@ class UiPathExecutor:
                         screenshot_url=screenshot_url,
                         duration_ms=duration_ms,
                         robot_id=None,
-                        executed_at=datetime.utcnow()
+                        executed_at=utcnow()
                     )
                 
                 time.sleep(poll_interval)
@@ -374,7 +375,7 @@ class UiPathExecutor:
                 screenshot_url=None,
                 duration_ms=None,
                 robot_id=None,
-                executed_at=datetime.utcnow()
+                executed_at=utcnow()
             )
             
         except requests.exceptions.RequestException as e:

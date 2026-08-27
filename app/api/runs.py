@@ -121,8 +121,7 @@ def get_run_results(run_id: str, db: Session = Depends(get_db)):
 
 @router.get("/{run_id}/report")
 def get_run_report(run_id: str, db: Session = Depends(get_db)) -> RiskReportSchema:
-    from app.services.risk import RiskEngine
-    from app.services.approval import ApprovalService
+    from app.services import risk_engine
 
     run = db.query(PipelineRun).filter(PipelineRun.id == run_id).first()
     if not run:
@@ -132,16 +131,13 @@ def get_run_report(run_id: str, db: Session = Depends(get_db)) -> RiskReportSche
     test_ids = [t.id for t in tests]
     results = db.query(TestResult).filter(TestResult.test_case_id.in_(test_ids)).all()
 
-    engine = RiskEngine()
-    report = engine.calculate_risk(run_id, results, tests)
-    return report
+    return risk_engine.calculate_risk(run_id, results, tests)
 
 
 @router.post("/{run_id}/approve")
 def approve_run(run_id: str, user: dict = Depends(require_approver), db: Session = Depends(get_db)):
-    from app.services.approval import ApprovalService
-    service = ApprovalService()
-    result = service.approve_all(run_id)
+    from app.services import approval_service
+    result = approval_service.approve_all(run_id)
     if not result.get("success"):
         raise HTTPException(status_code=400, detail=result.get("error", "Approval failed"))
     return result

@@ -6,6 +6,7 @@ from sqlalchemy.orm import relationship
 from datetime import datetime
 import enum
 from app.database import Base
+from app.utils.datetime_utils import utcnow
 
 
 class OrganisationPlan(str, enum.Enum):
@@ -100,7 +101,7 @@ class Organisation(Base):
     billing_email = Column(String, nullable=True)
     plan = Column(SQLEnum(OrganisationPlan), default=OrganisationPlan.free)
     stripe_customer_id = Column(String, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=utcnow)
 
     repositories = relationship("Repository", back_populates="organisation")
 
@@ -116,7 +117,7 @@ class Repository(Base):
     webhook_secret = Column(String, nullable=True)
     tier = Column(SQLEnum(RepositoryTier), default=RepositoryTier.free)
     is_active = Column(Boolean, default=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=utcnow)
 
     organisation = relationship("Organisation", back_populates="repositories")
     pipeline_runs = relationship("PipelineRun", back_populates="repository")
@@ -136,7 +137,7 @@ class PipelineRun(Base):
     risk_level = Column(SQLEnum(RiskLevel), nullable=True, index=True)
     started_at = Column(DateTime, nullable=True)
     completed_at = Column(DateTime, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow, index=True)
+    created_at = Column(DateTime, default=utcnow, index=True)
 
     repository = relationship("Repository", back_populates="pipeline_runs")
     test_cases = relationship("TestCase", back_populates="pipeline_run", cascade="all, delete-orphan")
@@ -168,7 +169,7 @@ class TestCase(Base):
     duration_ms = Column(Integer, nullable=True)
     robot_id = Column(String, nullable=True)
     executed_at = Column(DateTime, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=utcnow)
 
     pipeline_run = relationship("PipelineRun", back_populates="test_cases")
     test_results = relationship("TestResult", back_populates="test_case", cascade="all, delete-orphan")
@@ -195,7 +196,7 @@ class TestResult(Base):
     duration_ms = Column(Integer, nullable=True)
     robot_id = Column(String, nullable=True)
     heal_attempt_id = Column(String, ForeignKey("heal_attempts.id"), nullable=True, index=True)
-    executed_at = Column(DateTime, default=datetime.utcnow, index=True)
+    executed_at = Column(DateTime, default=utcnow, index=True)
 
     test_case = relationship("TestCase", back_populates="test_results")
     heal_attempt = relationship("HealAttempt", back_populates="test_results")
@@ -211,7 +212,7 @@ class HealAttempt(Base):
     proposed_steps = Column(Text, nullable=False)
     llm_rationale = Column(Text, nullable=True)
     status = Column(SQLEnum(HealStatus), default=HealStatus.proposed, index=True)
-    proposed_at = Column(DateTime, default=datetime.utcnow)
+    proposed_at = Column(DateTime, default=utcnow)
     verified_at = Column(DateTime, nullable=True)
 
     test_case = relationship("TestCase", back_populates="heal_attempts")

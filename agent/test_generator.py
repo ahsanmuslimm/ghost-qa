@@ -1,3 +1,9 @@
+"""Standalone Gemini test-case generator (manual / CLI usage).
+
+The production pipeline uses app/services/ai_brain.py, which shares the same
+Gemini provider (see GEMINI_API_KEY / GEMINI_MODEL in app/config.py). This
+script is a lightweight tool for ad-hoc generation against a PR diff.
+"""
 from google import genai
 import requests
 import json
@@ -9,6 +15,8 @@ load_dotenv()
 client = genai.Client(
     api_key=os.getenv("GEMINI_API_KEY")
 )
+
+GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
 
 
 def fetch_pr_diff(diff_url: str) -> str:
@@ -51,7 +59,7 @@ Return ONLY this JSON structure, nothing else, no markdown:
 """
 
     response = client.models.generate_content(
-        model="gemini-2.5-flash",
+        model=GEMINI_MODEL,
         contents=prompt,
     )
 

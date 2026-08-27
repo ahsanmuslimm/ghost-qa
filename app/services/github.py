@@ -5,14 +5,18 @@ import logging
 from typing import Optional, Dict, Any, List
 import requests
 from app.config import settings
+from app.utils.retry import with_retry
 
 logger = logging.getLogger(__name__)
+
+REQUEST_TIMEOUT = 30
 
 
 class GitHubService:
     def __init__(self):
         self.token = settings.GITHUB_TOKEN
         self.webhook_secret = settings.GITHUB_WEBHOOK_SECRET
+        self.base_url = settings.GITHUB_API_BASE.rstrip("/")
         self.headers = {
             "Authorization": f"token {self.token}",
             "Accept": "application/vnd.github.v3+json"
@@ -36,10 +40,11 @@ class GitHubService:
             logger.error(f"Signature verification failed: {e}")
             return False
 
+    @with_retry(attempts=3, backoff=1.0, retry_on=(requests.exceptions.ConnectionError, requests.exceptions.Timeout))
     def _request(self, method: str, url: str, **kwargs) -> Dict[str, Any]:
         if self.demo_mode:
             return {}
-        response = requests.request(method, url, headers=self.headers, **kwargs)
+        response = requests.request(method, url, headers=self.headers, timeout=REQUEST_TIMEOUT, **kwargs)
         response.raise_for_status()
         return response.json() if response.content else {}
 
@@ -52,7 +57,7 @@ class GitHubService:
                 "default_branch": "main",
                 "private": False
             }
-        return self._request("GET", f"https://api.github.com/repos/{owner}/{repo}")
+        return self._request("GET", f"{self.base_url}/repos/{owner}/{repo}")
 
     def get_pr(self, owner: str, repo: str, pr_number: int) -> Dict[str, Any]:
         if self.demo_mode:
@@ -69,7 +74,7 @@ class GitHubService:
                 "created_at": "2024-01-01T00:00:00Z",
                 "updated_at": "2024-01-01T00:00:00Z"
             }
-        return self._request("GET", f"https://api.github.com/repos/{owner}/{repo}/pulls/{pr_number}")
+        return self._request("GET", f"{self.base_url}/repos/{owner}/{repo}/pulls/{pr_number}")
 
     def get_changed_files(self, owner: str, repo: str, pr_number: int) -> List[Dict[str, Any]]:
         if self.demo_mode:
@@ -77,7 +82,7 @@ class GitHubService:
                 {"filename": "src/auth/login.py", "status": "modified", "additions": 15, "deletions": 3},
                 {"filename": "tests/test_auth.py", "status": "modified", "additions": 8, "deletions": 2}
             ]
-        data = self._request("GET", f"https://api.github.com/repos/{owner}/{repo}/pulls/{pr_number}/files")
+        data = self._request("GET", f"{self.base_url}/repos/{owner}/{repo}/pulls/{pr_number}/files")
         return data
 
     def get_pr_diff(self, diff_url: str) -> str:
@@ -92,14 +97,14 @@ class GitHubService:
         response = requests.get(diff_url, headers={
             "Authorization": f"token {self.token}",
             "Accept": "application/vnd.github.v3.diff"
-        })
+        }, timeout=REQUEST_TIMEOUT)
         response.raise_for_status()
         return response.text[:8000]
 
     def get_file_content(self, owner: str, repo: str, path: str, ref: str = "main") -> str:
         if self.demo_mode:
             return "# Demo file content\n"
-        url = f"https://api.github.com/repos/{owner}/{repo}/contents/{path}?ref={ref}"
+        url = f"{self.base_url}/repos/{owner}/{repo}/contents/{path}?ref={ref}"
         data = self._request("GET", url)
         import base64
         return base64.b64decode(data.get("content", "")).decode("utf-8")
@@ -125,7 +130,7 @@ class GitHubService:
             matches = re.findall(r"#(\d+)", body)
         if matches:
             try:
-                return self._request("GET", f"https://api.github.com/repos/{owner}/{repo}/issues/{matches[0]}")
+                return self._request("GET", f"{self.base_url}/repos/{owner}/{repo}/issues/{matches[0]}")
             except requests.exceptions.HTTPError as e:
                 if e.response.status_code == 404:
                     logger.warning(f"Linked issue #{matches[0]} not found, skipping")
@@ -137,7 +142,7 @@ class GitHubService:
         if self.demo_mode:
             logger.info(f"[DEMO] Would post comment to {owner}/{repo}#{pr_number}")
             return {"id": 999, "body": body}
-        url = f"https://api.github.com/repos/{owner}/{repo}/issues/{pr_number}/comments"
+        url = f"{self.base_url}/repos/{owner}/{repo}/issues/{pr_number}/comments"
         return self._request("POST", url, json={"body": body})
 
     def update_commit_status(
@@ -152,7 +157,7 @@ class GitHubService:
         if self.demo_mode:
             logger.info(f"[DEMO] Would update commit status {sha} to {state}")
             return {"state": state}
-        url = f"https://api.github.com/repos/{owner}/{repo}/statuses/{sha}"
+        url = f"{self.base_url}/repos/{owner}/{repo}/statuses/{sha}"
         return self._request("POST", url, json={
             "state": state,
             "description": description,

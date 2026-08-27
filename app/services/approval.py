@@ -5,6 +5,7 @@ from typing import List, Optional, Dict, Any
 from app.config import settings
 from app.models import TestCase, ApprovalStatus, TestCaseStatus
 from app.schemas.test_schemas import TestCaseSchema
+from app.utils.datetime_utils import utcnow
 
 logger = logging.getLogger(__name__)
 
@@ -49,7 +50,7 @@ class ApprovalService:
             test.approval_status = ApprovalStatus.approved
             test.status = TestCaseStatus.approved
             test.approved_by = approved_by
-            test.approved_at = datetime.utcnow()
+            test.approved_at = utcnow()
             db.commit()
             return {"success": True, "test_id": test_id, "status": "approved"}
         finally:
@@ -84,7 +85,7 @@ class ApprovalService:
                 test.approval_status = ApprovalStatus.approved
                 test.status = TestCaseStatus.approved
                 test.approved_by = approved_by
-                test.approved_at = datetime.utcnow()
+                test.approved_at = utcnow()
                 count += 1
             db.commit()
             return {"success": True, "approved_count": count}

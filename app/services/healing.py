@@ -11,14 +11,22 @@ from app.models import (
 from app.database import SessionLocal
 from app.services.ai_brain import AIBrainService
 from app.services.executor import ExecutorService
+from app.utils.datetime_utils import utcnow
 
 logger = logging.getLogger(__name__)
 
 
 class HealingService:
-    def __init__(self):
-        self.ai = AIBrainService()
-        self.executor = ExecutorService()
+    def __init__(self, ai=None, executor=None):
+        # Default to the shared singletons; import lazily because
+        # app.services.__init__ instantiates this service itself.
+        if ai is None or executor is None:
+            from app.services import ai_service, executor_service
+            self.ai = ai or ai_service
+            self.executor = executor or executor_service
+        else:
+            self.ai = ai
+            self.executor = executor
         self.demo_mode = settings.DEMO_MODE
 
     def create_heal_attempt(
@@ -125,7 +133,7 @@ class HealingService:
 
             result = results[0]
             heal.status = HealStatus.verified if result.outcome == TestOutcome.passed else HealStatus.rejected
-            heal.verified_at = datetime.utcnow()
+            heal.verified_at = utcnow()
             db.commit()
 
             return {
