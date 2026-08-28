@@ -4,9 +4,10 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from slowapi.errors import RateLimitExceeded
 from app.config import settings
-from app.database import init_db
-from app.api import webhooks, runs, tests, heals, dashboard, auth, orgs
+from app.database import init_db, seed_initial_data
+from app.api import webhooks, runs, tests, heals, dashboard, auth, orgs, users
 from app.middleware.auth import JWTMiddleware
+from app.middleware.security_headers import SecurityHeadersMiddleware
 from app.rate_limit import limiter
 import logging
 import os
@@ -61,10 +62,17 @@ async def rate_limit_handler(request: Request, exc: RateLimitExceeded):
 # JWT Middleware
 app.add_middleware(JWTMiddleware)
 
-# CORS
+# Security response headers (applied to every response)
+app.add_middleware(SecurityHeadersMiddleware)
+
+# CORS — origins come from config so production can lock them down
+_cors_origins = (
+    ["*"] if settings.CORS_ORIGINS.strip() == "*"
+    else [o.strip() for o in settings.CORS_ORIGINS.split(",") if o.strip()]
+)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=_cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -82,6 +90,7 @@ app.include_router(heals.router, prefix="/api/heals", tags=["heals"])
 app.include_router(dashboard.router, prefix="/api/dashboard", tags=["dashboard"])
 app.include_router(auth.router, prefix="/auth", tags=["auth"])
 app.include_router(orgs.router, prefix="/api/orgs", tags=["orgs"])
+app.include_router(users.router, prefix="/api/users", tags=["users"])
 
 
 @app.get("/")
@@ -103,10 +112,11 @@ def report_page(run_id: str, request: Request):
     return templates.TemplateResponse("report.html", {"request": request, "run_id": run_id})
 
 
-# Initialize database on startup
+# Initialize database and seed RBAC data on startup
 @app.on_event("startup")
 def on_startup():
     init_db()
+    seed_initial_data()
     logger.info(f"Ghost QA started in {settings.APP_ENV} mode (DEMO_MODE={settings.DEMO_MODE})")
 
 

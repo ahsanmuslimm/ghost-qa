@@ -11,6 +11,7 @@ from app.services.executor import ExecutorService
 from app.services.risk import RiskEngine
 from app.services.healing import HealingService
 from app.services.slack import SlackService
+from app.services.rbac import RBACService
 
 github_service = GitHubService()
 ai_service = AIBrainService()
@@ -19,6 +20,7 @@ executor_service = ExecutorService()
 risk_engine = RiskEngine()
 healing_service = HealingService()
 slack_service = SlackService()
+rbac_service = RBACService()
 
 __all__ = [
     "github_service",
@@ -28,4 +30,5 @@ __all__ = [
     "risk_engine",
     "healing_service",
     "slack_service",
+    "rbac_service",
 ]

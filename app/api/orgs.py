@@ -6,7 +6,7 @@ from typing import Optional
 
 from app.database import get_db
 from app.models import Organisation, Repository, PipelineRun, PipelineStatus
-from app.dependencies import get_current_user, require_approver
+from app.dependencies import get_current_user, require_permission
 
 router = APIRouter()
 
@@ -67,7 +67,7 @@ def create_repo(
     org_id: str,
     body: CreateRepoRequest,
     db: Session = Depends(get_db),
-    _user: dict = Depends(require_approver),
+    _user: dict = Depends(require_permission("pipeline:create")),
 ):
     """Create a repository for an organisation."""
     org = _get_org_or_404(org_id, db)
@@ -126,7 +126,7 @@ def delete_repo(
     org_id: str,
     repo_id: str,
     db: Session = Depends(get_db),
-    _user: dict = Depends(require_approver),
+    _user: dict = Depends(require_permission("system:configure")),
 ):
     """Soft-delete a repository (set is_active=False).
 

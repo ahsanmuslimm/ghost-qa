@@ -1,6 +1,6 @@
 from sqlalchemy import (
     Column, String, Integer, Float, Boolean, DateTime, Text,
-    Enum as SQLEnum, ForeignKey, Index
+    Enum as SQLEnum, ForeignKey, Index, Table
 )
 from sqlalchemy.orm import relationship
 from datetime import datetime
@@ -217,6 +217,76 @@ class HealAttempt(Base):
 
     test_case = relationship("TestCase", back_populates="heal_attempts")
     test_results = relationship("TestResult", back_populates="heal_attempt", cascade="all, delete-orphan")
+
+
+# ---------------------------------------------------------------------------
+# RBAC: users, roles, permissions and their association tables
+# ---------------------------------------------------------------------------
+
+user_roles = Table(
+    "user_roles",
+    Base.metadata,
+    Column("user_id", String, ForeignKey("users.id"), primary_key=True),
+    Column("role_id", String, ForeignKey("roles.id"), primary_key=True)
+)
+
+role_permissions = Table(
+    "role_permissions",
+    Base.metadata,
+    Column("role_id", String, ForeignKey("roles.id"), primary_key=True),
+    Column("permission_id", String, ForeignKey("permissions.id"), primary_key=True)
+)
+
+
+class User(Base):
+    __tablename__ = "users"
+
+    id = Column(String, primary_key=True, index=True)
+    email = Column(String, unique=True, nullable=False, index=True)
+    password_hash = Column(String, nullable=False)
+    full_name = Column(String, nullable=True)
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=utcnow)
+    updated_at = Column(DateTime, default=utcnow, onupdate=utcnow)
+
+    roles = relationship("Role", secondary=user_roles, back_populates="users")
+
+    @property
+    def permissions(self):
+        """All distinct permission names granted through this user's roles."""
+        perms = []
+        for role in self.roles:
+            perms.extend(p.name for p in role.permissions)
+        return sorted(set(perms))
+
+    @property
+    def is_admin(self):
+        return any(r.name == "admin" for r in self.roles)
+
+
+class Role(Base):
+    __tablename__ = "roles"
+
+    id = Column(String, primary_key=True, index=True)
+    name = Column(String, unique=True, nullable=False, index=True)
+    description = Column(String, nullable=True)
+    is_default = Column(Boolean, default=False)
+    created_at = Column(DateTime, default=utcnow)
+
+    users = relationship("User", secondary=user_roles, back_populates="roles")
+    permissions = relationship("Permission", secondary=role_permissions, back_populates="roles")
+
+
+class Permission(Base):
+    __tablename__ = "permissions"
+
+    id = Column(String, primary_key=True, index=True)
+    name = Column(String, unique=True, nullable=False, index=True)
+    description = Column(String, nullable=True)
+    resource = Column(String, nullable=False, index=True)
+    action = Column(String, nullable=False, index=True)
+
+    roles = relationship("Role", secondary=role_permissions, back_populates="permissions")
 
 
 # Indexes for common queries

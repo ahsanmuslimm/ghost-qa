@@ -2,13 +2,13 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.services import approval_service, healing_service
-from app.dependencies import require_approver
+from app.dependencies import require_permission
 
 router = APIRouter()
 
 
 @router.post("/{test_id}/approve")
-def approve_test(test_id: str, user: dict = Depends(require_approver), db: Session = Depends(get_db)):
+def approve_test(test_id: str, user: dict = Depends(require_permission("test:approve")), db: Session = Depends(get_db)):
     result = approval_service.approve_test(test_id)
     if not result.get("success"):
         raise HTTPException(status_code=400, detail=result.get("error", "Approval failed"))
@@ -16,7 +16,7 @@ def approve_test(test_id: str, user: dict = Depends(require_approver), db: Sessi
 
 
 @router.post("/{test_id}/reject")
-def reject_test(test_id: str, user: dict = Depends(require_approver), reason: str = "", db: Session = Depends(get_db)):
+def reject_test(test_id: str, user: dict = Depends(require_permission("test:reject")), reason: str = "", db: Session = Depends(get_db)):
     result = approval_service.reject_test(test_id, reason)
     if not result.get("success"):
         raise HTTPException(status_code=400, detail=result.get("error", "Rejection failed"))

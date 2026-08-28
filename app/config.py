@@ -60,6 +60,12 @@ class Settings(BaseSettings):
     JWT_EXPIRY_MINUTES: int = Field(default=60, ge=15, le=1440)
     AUTH_USERS: str = '{"admin@ghost.qa": {"password_hash": "changeme", "role": "approver"}}'
 
+    # RBAC — bootstrap admin password used when seeding the users table
+    ADMIN_DEFAULT_PASSWORD: str = "Admin123!"
+
+    # CORS — comma-separated origins; "*" allows everything (dev default)
+    CORS_ORIGINS: str = "*"
+
     # Rate limiting
     RATE_LIMIT_ENABLED: bool = True
 

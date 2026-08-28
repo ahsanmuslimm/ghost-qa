@@ -7,7 +7,7 @@ from app.models import (
     PipelineStatus, ApprovalStatus, TestCaseStatus, TestOutcome
 )
 from app.schemas.test_schemas import RiskReportSchema
-from app.dependencies import require_approver
+from app.dependencies import require_permission
 
 router = APIRouter()
 
@@ -135,7 +135,7 @@ def get_run_report(run_id: str, db: Session = Depends(get_db)) -> RiskReportSche
 
 
 @router.post("/{run_id}/approve")
-def approve_run(run_id: str, user: dict = Depends(require_approver), db: Session = Depends(get_db)):
+def approve_run(run_id: str, user: dict = Depends(require_permission("test:approve")), db: Session = Depends(get_db)):
     from app.services import approval_service
     result = approval_service.approve_all(run_id)
     if not result.get("success"):
