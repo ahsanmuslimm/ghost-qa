@@ -1,6 +1,7 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 from app.services.auth import AuthService
+from app.rate_limit import limiter
 
 router = APIRouter()
 auth_service = AuthService()
@@ -17,9 +18,10 @@ class LoginResponse(BaseModel):
 
 
 @router.post("/login", response_model=LoginResponse)
-async def login(request: LoginRequest):
+@limiter.limit("10/minute")
+async def login(request: Request, body: LoginRequest):
     """Authenticate user and return JWT token."""
-    result = auth_service.authenticate(request.email, request.password)
+    result = auth_service.authenticate(body.email, body.password)
     if not result:
         raise HTTPException(status_code=401, detail="Invalid credentials")
     return LoginResponse(**result)

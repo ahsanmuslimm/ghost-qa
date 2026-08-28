@@ -76,6 +76,11 @@ class HealingService:
             heal = db.query(HealAttempt).filter(HealAttempt.id == heal_id).first()
             if not heal:
                 return {"success": False, "error": "Heal attempt not found"}
+            if heal.status != HealStatus.proposed:
+                return {
+                    "success": False,
+                    "error": f"Cannot approve heal in '{heal.status.value}' state"
+                }
             heal.status = HealStatus.accepted
             db.commit()
             return {"success": True, "heal_id": heal_id, "status": "accepted"}
@@ -88,6 +93,11 @@ class HealingService:
             heal = db.query(HealAttempt).filter(HealAttempt.id == heal_id).first()
             if not heal:
                 return {"success": False, "error": "Heal attempt not found"}
+            if heal.status != HealStatus.proposed:
+                return {
+                    "success": False,
+                    "error": f"Cannot reject heal in '{heal.status.value}' state"
+                }
             heal.status = HealStatus.rejected
             db.commit()
             return {"success": True, "heal_id": heal_id, "status": "rejected"}
@@ -104,6 +114,12 @@ class HealingService:
             test_case = db.query(TestCase).filter(TestCase.id == heal.test_case_id).first()
             if not test_case:
                 return {"success": False, "error": "Test case not found"}
+
+            if heal.status != HealStatus.accepted:
+                return {
+                    "success": False,
+                    "error": f"Cannot execute heal in '{heal.status.value}' state (must be approved first)"
+                }
 
             # Create a temporary test case with proposed steps
             proposed_steps_json = json.dumps(

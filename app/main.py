@@ -2,13 +2,12 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from slowapi import Limiter
-from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 from app.config import settings
 from app.database import init_db
 from app.api import webhooks, runs, tests, heals, dashboard, auth, orgs
 from app.middleware.auth import JWTMiddleware
+from app.rate_limit import limiter
 import logging
 import os
 
@@ -34,8 +33,7 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# Rate limiter
-limiter = Limiter(key_func=get_remote_address, enabled=settings.RATE_LIMIT_ENABLED)
+# Rate limiter (shared instance lives in app.rate_limit so routers can use it)
 app.state.limiter = limiter
 
 

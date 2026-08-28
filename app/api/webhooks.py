@@ -4,8 +4,7 @@ import threading
 from typing import Dict, Any, List
 from fastapi import APIRouter, Request, HTTPException, Depends
 from fastapi.responses import JSONResponse
-from slowapi import Limiter
-from slowapi.util import get_remote_address
+from app.rate_limit import limiter
 from pydantic import ValidationError
 from app.config import settings
 from app.services import (
@@ -30,6 +29,7 @@ router = APIRouter()
 
 
 @router.post("/github")
+@limiter.limit("60/minute")
 async def handle_github_webhook(
     request: Request,
     payload: Dict[str, Any]

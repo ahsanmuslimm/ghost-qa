@@ -37,6 +37,14 @@ def setup_test_db():
             pass
 
 
+@pytest.fixture(autouse=True)
+def reset_rate_limiter():
+    """Reset slowapi counters so endpoint limits don't bleed across tests."""
+    from app.rate_limit import limiter
+    limiter.reset()
+    yield
+
+
 @pytest.fixture
 def test_db():
     """Provide a clean database session for each test."""

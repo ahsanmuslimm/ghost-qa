@@ -1,13 +1,13 @@
 import os
 import json
+import time
 import hashlib
 import hmac
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import Dict, Any, Optional
 from fastapi import HTTPException
 from pydantic import BaseModel
 from app.config import settings
-from app.utils.datetime_utils import utcnow
 
 
 class TokenPayload(BaseModel):
@@ -50,14 +50,16 @@ class AuthService:
         if role not in self.VALID_ROLES:
             raise ValueError(f"Invalid role. Must be one of: {', '.join(self.VALID_ROLES)}")
 
-        now = utcnow()
-        expiry = now + timedelta(minutes=self._expiry_minutes)
+        # Use epoch seconds directly: .timestamp() on a naive UTC datetime
+        # would be interpreted as local time and shift exp/iat by the
+        # timezone offset, making tokens appear expired immediately.
+        now_epoch = int(time.time())
 
         payload = {
             "sub": email,
             "role": role,
-            "exp": int(expiry.timestamp()),
-            "iat": int(now.timestamp())
+            "exp": now_epoch + self._expiry_minutes * 60,
+            "iat": now_epoch
         }
 
         # HS256 signing
@@ -73,7 +75,7 @@ class AuthService:
         try:
             payload = jwt.decode(token, self._secret, algorithms=["HS256"])
             # Verify expiry
-            if utcnow().timestamp() > payload.get("exp", 0):
+            if time.time() > payload.get("exp", 0):
                 raise HTTPException(status_code=401, detail="Token expired")
             return payload
         except PyJWTError:
