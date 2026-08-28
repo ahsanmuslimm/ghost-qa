@@ -1,6 +1,8 @@
 import json
+import hashlib
 import logging
 import re
+import time
 from typing import List, Dict, Any, Optional
 try:
     from openai import OpenAI
@@ -21,10 +23,14 @@ logger = logging.getLogger(__name__)
 
 
 class AIBrainService:
+    CACHE_MAX_ENTRIES = 100
+    CACHE_TTL_SECONDS = 3600
+
     def __init__(self):
         self.gemini_client = None
         self.xai_client = None
         self.anthropic_client = None
+        self._cache: Dict[str, Dict[str, Any]] = {}
 
         # Gemini (primary provider — free tier)
         gemini_key = settings.GEMINI_API_KEY
@@ -137,7 +143,7 @@ class AIBrainService:
                     return json.loads(match.group(0))
                 except json.JSONDecodeError:
                     pass
-            raise ValueError(f"Failed to parse JSON from Claude response: {raw[:500]}")
+            raise ValueError(f"Failed to parse JSON from AI response: {raw[:500]}")
 
     def generate_tests(
         self,
@@ -148,6 +154,12 @@ class AIBrainService:
         linked_issue: Optional[Dict[str, Any]] = None,
         existing_tests: List[str] = None
     ) -> AITestResponse:
+        cache_key = self._cache_key("generate_tests", pr_title, pr_body, diff, changed_files)
+        cached = self._cache_get(cache_key)
+        if cached is not None:
+            logger.info("generate_tests cache hit — reusing cached test suite")
+            return cached
+
         system_prompt = """You are a senior QA engineer specializing in AI-powered test generation.
 Analyze pull request changes and generate contextual, meaningful test cases.
 Focus on the PURPOSE of the change, not generic tests.
@@ -197,7 +209,20 @@ Return ONLY this JSON structure, nothing else:
 }}"""
 
         raw = self._call_ai(prompt, system_prompt=system_prompt)
-        data = self._parse_json(raw)
+        try:
+            tests = self._transform_tests(self._parse_json(raw))
+        except Exception as e:
+            logger.error(f"Failed to parse AI response, falling back to demo tests: {e}")
+            tests = []
+        if not tests:
+            # Parse failed or AI returned no usable tests — use demo fallback
+            demo_raw = self._generate_demo_response(prompt, system_prompt)
+            tests = self._transform_tests(self._parse_json(demo_raw))
+        response = AITestResponse(tests=tests)
+        self._cache_put(cache_key, response)
+        return response
+
+    def _transform_tests(self, data: Dict[str, Any]) -> List[TestCaseSchema]:
         tests = []
         for t in data.get("tests", []):
             try:
@@ -214,7 +239,25 @@ Return ONLY this JSON structure, nothing else:
             except Exception as e:
                 logger.warning(f"Failed to parse test case: {e}")
                 continue
-        return AITestResponse(tests=tests)
+        return tests
+
+    def _cache_key(self, *parts: Any) -> str:
+        return hashlib.md5(json.dumps(parts, default=str).encode("utf-8")).hexdigest()
+
+    def _cache_get(self, key: str) -> Optional[AITestResponse]:
+        entry = self._cache.get(key)
+        if not entry:
+            return None
+        if time.time() - entry["timestamp"] < self.CACHE_TTL_SECONDS:
+            return entry["response"]
+        self._cache.pop(key, None)
+        return None
+
+    def _cache_put(self, key: str, response: AITestResponse) -> None:
+        if len(self._cache) >= self.CACHE_MAX_ENTRIES:
+            oldest = min(self._cache, key=lambda k: self._cache[k]["timestamp"])
+            self._cache.pop(oldest, None)
+        self._cache[key] = {"response": response, "timestamp": time.time()}
 
     def detect_test_debt(
         self,

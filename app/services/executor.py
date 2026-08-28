@@ -5,6 +5,7 @@ import time
 import uuid
 import requests
 from datetime import datetime
+from sqlalchemy import text
 from typing import List, Dict, Any, Optional
 from app.config import settings
 from app.models import TestCase, TestResult, TestOutcome, FailureType, TestCaseStatus
@@ -226,8 +227,9 @@ class UiPathExecutor:
             db = SessionLocal()
             try:
                 db.execute(
-                    "UPDATE test_cases SET uipath_test_id = :uipath_test_id WHERE id = :test_case_id"
-                ), {"uipath_test_id": uipath_test_id, "test_case_id": test_case.id}
+                    text("UPDATE test_cases SET uipath_test_id = :uipath_test_id WHERE id = :test_case_id"),
+                    {"uipath_test_id": uipath_test_id, "test_case_id": test_case.id}
+                )
                 db.commit()
             finally:
                 db.close()

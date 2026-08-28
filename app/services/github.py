@@ -82,8 +82,26 @@ class GitHubService:
                 {"filename": "src/auth/login.py", "status": "modified", "additions": 15, "deletions": 3},
                 {"filename": "tests/test_auth.py", "status": "modified", "additions": 8, "deletions": 2}
             ]
-        data = self._request("GET", f"{self.base_url}/repos/{owner}/{repo}/pulls/{pr_number}/files")
-        return data
+        # GitHub paginates PR files (default 30/page, max 100) — follow Link headers
+        files: List[Dict[str, Any]] = []
+        url: Optional[str] = f"{self.base_url}/repos/{owner}/{repo}/pulls/{pr_number}/files?per_page=100"
+        while url:
+            response = requests.get(url, headers=self.headers, timeout=REQUEST_TIMEOUT)
+            response.raise_for_status()
+            files.extend(response.json())
+            url = self._next_page_url(response.headers.get("Link"))
+        return files
+
+    @staticmethod
+    def _next_page_url(link_header: Optional[str]) -> Optional[str]:
+        """Extract rel=\"next\" URL from a GitHub Link header, if present."""
+        if not link_header:
+            return None
+        for part in link_header.split(","):
+            section = part.split(";")
+            if len(section) == 2 and 'rel="next"' in section[1]:
+                return section[0].strip().strip("<>")
+        return None
 
     def get_pr_diff(self, diff_url: str) -> str:
         if self.demo_mode:
