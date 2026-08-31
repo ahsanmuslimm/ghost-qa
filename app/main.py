@@ -15,7 +15,7 @@ import logging
 import os
 
 # Resolve paths relative to this file (project root)
-_project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+_project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 _static_dir = os.path.join(_project_root, "static")
 _template_dir = os.path.join(_project_root, "templates")
 

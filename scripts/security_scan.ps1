@@ -8,11 +8,11 @@ $ErrorActionPreference = "Continue"
 $failed = $false
 
 Write-Host "`n=== [1/2] Bandit (static analysis, medium+ severity) ===" -ForegroundColor Cyan
-bandit -r app -ll -ii --exclude tests,frontend,loadtests
+python -m bandit -r app -ll -ii --exclude tests,frontend,loadtests
 if ($LASTEXITCODE -ne 0) { $failed = $true }
 
 Write-Host "`n=== [2/2] pip-audit (dependency vulnerabilities) ===" -ForegroundColor Cyan
-pip-audit -r requirements.txt --strict
+python -m pip_audit -r requirements.txt --strict
 if ($LASTEXITCODE -ne 0) { $failed = $true }
 
 if ($failed) {

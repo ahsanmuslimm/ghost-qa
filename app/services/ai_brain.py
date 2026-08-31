@@ -242,7 +242,9 @@ Return ONLY this JSON structure, nothing else:
         return tests
 
     def _cache_key(self, *parts: Any) -> str:
-        return hashlib.md5(json.dumps(parts, default=str).encode("utf-8")).hexdigest()
+        # sha256: cache-key derivation only (not security-sensitive), avoids
+        # weak-hash findings from static analysis (bandit B324)
+        return hashlib.sha256(json.dumps(parts, default=str).encode("utf-8")).hexdigest()
 
     def _cache_get(self, key: str) -> Optional[AITestResponse]:
         entry = self._cache.get(key)

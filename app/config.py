@@ -11,7 +11,7 @@ class Settings(BaseSettings):
     APP_ENV: str = "development"
     APP_DEBUG: bool = True
     APP_PORT: int = 8000
-    APP_HOST: str = "0.0.0.0"
+    APP_HOST: str = "0.0.0.0"  # nosec B104 -- bind inside the container; exposure is controlled by the orchestrator
     DEMO_MODE: bool = False
     AUTO_APPROVE: bool = True
 

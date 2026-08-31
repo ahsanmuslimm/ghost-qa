@@ -23,8 +23,17 @@ jobs:
       - name: Smoke-test container health endpoint
         run: |
           docker run -d --name ghostqa -e DEMO_MODE=true -e DATABASE_URL=sqlite:///./demo.db -p 8000:8000 ghost-qa-backend:${{ github.sha }}
-          sleep 10
-          curl -fsS http://localhost:8000/
+          # Wait for migrations + uvicorn workers to come up (max 60s)
+          for i in $(seq 1 30); do
+            if curl -fsS http://localhost:8000/; then
+              echo "Container healthy after ~$((i * 2))s"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "Container failed to become healthy — logs:"
+          docker logs ghostqa
+          exit 1
 
       # Pushes only run on main/tags and only when GHCR credentials exist
       - name: Log in to GitHub Container Registry

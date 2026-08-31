@@ -50,7 +50,7 @@ jobs:
       - name: Build image
         run: docker build -t ghost-qa:scan .
       - name: Scan with Trivy
-        uses: aquasecurity/trivy-action@0.24.0
+        uses: aquasecurity/trivy-action@v0.30.0
         with:
           image-ref: ghost-qa:scan
           format: table
