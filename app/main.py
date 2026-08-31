@@ -8,7 +8,9 @@ from app.database import init_db, seed_initial_data
 from app.api import webhooks, runs, tests, heals, dashboard, auth, orgs, users
 from app.middleware.auth import JWTMiddleware
 from app.middleware.security_headers import SecurityHeadersMiddleware
+from app.monitoring.metrics import metrics_middleware
 from app.rate_limit import limiter
+from prometheus_client import make_asgi_app
 import logging
 import os
 
@@ -65,6 +67,12 @@ app.add_middleware(JWTMiddleware)
 # Security response headers (applied to every response)
 app.add_middleware(SecurityHeadersMiddleware)
 
+
+# Prometheus instrumentation (registered last → outermost layer, sees all traffic)
+@app.middleware("http")
+async def prometheus_instrumentation(request: Request, call_next):
+    return await metrics_middleware(request, call_next)
+
 # CORS — origins come from config so production can lock them down
 _cors_origins = (
     ["*"] if settings.CORS_ORIGINS.strip() == "*"
@@ -81,6 +89,9 @@ app.add_middleware(
 # Static files and templates
 app.mount("/static", StaticFiles(directory=_static_dir), name="static")
 templates = Jinja2Templates(directory=_template_dir)
+
+# Prometheus scrape endpoint (outside /api so it bypasses JWT auth)
+app.mount("/metrics", make_asgi_app())
 
 # Include routers
 app.include_router(webhooks.router, prefix="/api/webhooks", tags=["webhooks"])

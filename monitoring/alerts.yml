@@ -1,0 +1,33 @@
+groups:
+  - name: ghost-qa-alerts
+    rules:
+      - alert: HighErrorRate
+        expr: |
+          sum(rate(ghost_qa_requests_total{status_code=~"5.."}[5m]))
+            / sum(rate(ghost_qa_requests_total[5m])) > 0.05
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Ghost QA 5xx error rate above 5%"
+          description: "More than 5% of requests are failing for 5 minutes."
+
+      - alert: HighLatencyP95
+        expr: |
+          histogram_quantile(0.95,
+            sum(rate(ghost_qa_request_latency_seconds_bucket[5m])) by (le)
+          ) > 2
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Ghost QA p95 latency above 2s"
+
+      - alert: InstanceDown
+        expr: up{job="ghost-qa"} == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Ghost QA instance unreachable"
+          description: "Prometheus cannot scrape {{ $labels.instance }}."

@@ -19,6 +19,12 @@ class Settings(BaseSettings):
     DATABASE_URL: str = "sqlite:///./ghost_qa.db"
     DATABASE_URL_SQLITE: str = "sqlite:///./ghost_qa.db"
 
+    # Connection pooling — applied to non-SQLite engines (PostgreSQL in prod)
+    DATABASE_POOL_SIZE: int = 20
+    DATABASE_MAX_OVERFLOW: int = 10
+    DATABASE_POOL_RECYCLE: int = 3600
+    DATABASE_POOL_PRE_PING: bool = True
+
     # GitHub
     GITHUB_TOKEN: Optional[str] = None
     GITHUB_WEBHOOK_SECRET: Optional[str] = None

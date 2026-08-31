@@ -1,0 +1,79 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ghost-qa
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ghost-qa
+  namespace: ghost-qa
+  labels:
+    app: ghost-qa
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: ghost-qa
+  template:
+    metadata:
+      labels:
+        app: ghost-qa
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8000"
+        prometheus.io/path: /metrics
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1001
+        fsGroup: 1001
+      # Run schema migrations once before any pod starts serving
+      initContainers:
+        - name: migrate
+          image: ghcr.io/YOUR_ORG/ghost-qa:latest
+          command: ["./docker-entrypoint.sh", "migrate"]
+          envFrom:
+            - configMapRef:
+                name: ghost-qa-config
+            - secretRef:
+                name: ghost-qa-secrets
+      containers:
+        - name: api
+          image: ghcr.io/YOUR_ORG/ghost-qa:latest
+          ports:
+            - containerPort: 8000
+              name: http
+          envFrom:
+            - configMapRef:
+                name: ghost-qa-config
+            - secretRef:
+                name: ghost-qa-secrets
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: ghost-qa-secrets
+                  key: DATABASE_URL
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 8000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 8000
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: 250m
+              memory: 512Mi
+            limits:
+              cpu: "1"
+              memory: 1Gi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false

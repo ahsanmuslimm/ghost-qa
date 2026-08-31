@@ -1,0 +1,58 @@
+name: Security Scan
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+  schedule:
+    # Weekly dependency-vulnerability sweep
+    - cron: "0 6 * * 1"
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  bandit:
+    name: Static analysis (bandit)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install bandit
+        run: pip install bandit[toml]
+      # -ll: report medium/high severity only; tests are excluded
+      - name: Run bandit
+        run: bandit -r app -ll -ii --exclude tests,frontend
+
+  pip-audit:
+    name: Dependency vulnerabilities (pip-audit)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install pip-audit
+        run: pip install pip-audit
+      - name: Audit requirements.txt
+        run: pip-audit -r requirements.txt --strict
+        continue-on-error: true  # advisory on PRs; remove to make blocking
+
+  docker-trivy:
+    name: Container image scan (trivy)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build image
+        run: docker build -t ghost-qa:scan .
+      - name: Scan with Trivy
+        uses: aquasecurity/trivy-action@0.24.0
+        with:
+          image-ref: ghost-qa:scan
+          format: table
+          severity: CRITICAL,HIGH
+          exit-code: 0  # report-only; set 1 to block releases
