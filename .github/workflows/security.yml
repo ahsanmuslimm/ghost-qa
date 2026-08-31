@@ -49,10 +49,12 @@ jobs:
       - uses: actions/checkout@v4
       - name: Build image
         run: docker build -t ghost-qa:scan .
-      - name: Scan with Trivy
-        uses: aquasecurity/trivy-action@v0.30.0
-        with:
-          image-ref: ghost-qa:scan
-          format: table
-          severity: CRITICAL,HIGH
-          exit-code: 0  # report-only; set 1 to block releases
+      # Direct binary install — avoids nested action version rot
+      # (trivy-action pins aquasecurity/setup-trivy tags that get unpublished)
+      - name: Install Trivy
+        run: |
+          curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh \
+            | sh -s -- -b /usr/local/bin v0.69.3
+      - name: Scan image with Trivy
+        run: |
+          trivy image --severity CRITICAL,HIGH --exit-code 0 --format table ghost-qa:scan
