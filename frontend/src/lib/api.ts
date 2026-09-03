@@ -7,6 +7,7 @@ import type {
   PipelineRun,
   RiskReport,
   RunsPage,
+  SystemHealth,
   TestCase,
   TestResult,
   UserPayload,
@@ -52,6 +53,11 @@ api.interceptors.response.use(
 export const authApi = {
   login: (email: string, password: string) =>
     api.post<LoginResponse>('/auth/login', { email, password }),
+};
+
+// Unauthenticated root endpoint: which run mode is the backend serving?
+export const systemApi = {
+  health: () => api.get<SystemHealth>('/', { timeout: 5000 }),
 };
 
 export const pipelineApi = {

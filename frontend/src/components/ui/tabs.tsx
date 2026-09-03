@@ -32,21 +32,27 @@ export function Tabs({
   );
 }
 
+/** Underline tab list — the standard control for section navigation in consoles. */
 export function TabsList({ className, children }: { className?: string; children: React.ReactNode }) {
   return (
     <div
       role="tablist"
-      className={cn(
-        'inline-flex h-9 items-center justify-center rounded-lg bg-muted p-1 text-muted-foreground',
-        className
-      )}
+      className={cn('flex items-center gap-1 border-b border-border', className)}
     >
       {children}
     </div>
   );
 }
 
-export function TabsTrigger({ value, children }: { value: string; children: React.ReactNode }) {
+export function TabsTrigger({
+  value,
+  className,
+  children,
+}: {
+  value: string;
+  className?: string;
+  children: React.ReactNode;
+}) {
   const { value: active, onValueChange } = useTabs();
   const isActive = active === value;
   return (
@@ -56,8 +62,11 @@ export function TabsTrigger({ value, children }: { value: string; children: Reac
       aria-selected={isActive}
       onClick={() => onValueChange(value)}
       className={cn(
-        'inline-flex items-center justify-center whitespace-nowrap rounded-md px-3 py-1 text-sm font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-        isActive ? 'bg-background text-foreground shadow' : 'hover:text-foreground'
+        '-mb-px inline-flex items-center gap-1.5 whitespace-nowrap border-b-2 px-3 py-2 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
+        isActive
+          ? 'border-primary text-foreground'
+          : 'border-transparent text-muted-foreground hover:border-border-strong hover:text-foreground',
+        className
       )}
     >
       {children}
@@ -65,8 +74,20 @@ export function TabsTrigger({ value, children }: { value: string; children: Reac
   );
 }
 
-export function TabsContent({ value, children }: { value: string; children: React.ReactNode }) {
+export function TabsContent({
+  value,
+  className,
+  children,
+}: {
+  value: string;
+  className?: string;
+  children: React.ReactNode;
+}) {
   const { value: active } = useTabs();
   if (active !== value) return null;
-  return <div role="tabpanel" className="mt-4">{children}</div>;
+  return (
+    <div role="tabpanel" className={cn('mt-4 animate-fade-in', className)}>
+      {children}
+    </div>
+  );
 }

@@ -11,8 +11,8 @@ interface State {
   message: string | null;
 }
 
-// Global error boundary (Task 5.13): catches render crashes and offers a
-// clean recovery path instead of a blank screen.
+// Global error boundary: catches render crashes and offers a clean recovery
+// path instead of a blank screen.
 export class ErrorBoundary extends Component<Props, State> {
   state: State = { hasError: false, message: null };
 
@@ -28,16 +28,33 @@ export class ErrorBoundary extends Component<Props, State> {
     if (!this.state.hasError) return this.props.children;
 
     return (
-      <div className="flex min-h-screen items-center justify-center bg-background p-4">
-        <div className="w-full max-w-md space-y-4 rounded-lg border border-border bg-card p-8 text-center">
-          <AlertTriangle className="mx-auto h-10 w-10 text-amber-400" aria-hidden="true" />
-          <h1 className="text-xl font-bold">Something went wrong</h1>
+      <div className="flex min-h-screen items-center justify-center bg-surface p-6">
+        <div className="w-full max-w-md rounded-lg border border-border bg-card p-6 shadow-raised">
+          <div className="flex items-start gap-3">
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-warning-border bg-warning-subtle">
+              <AlertTriangle className="h-4 w-4 text-warning" aria-hidden="true" />
+            </span>
+            <div className="min-w-0 space-y-1">
+              <h1 className="text-sm font-semibold text-foreground">Unexpected interface error</h1>
+              <p className="text-xs leading-relaxed text-muted-foreground">
+                The console failed to render this view. Reloading usually resolves it; the error has
+                been logged to the browser console.
+              </p>
+            </div>
+          </div>
+
           {this.state.message && (
-            <p className="break-words font-mono text-xs text-muted-foreground">{this.state.message}</p>
+            <pre className="mt-4 max-h-40 overflow-auto rounded-md border border-border bg-surface p-3 font-mono text-2xs leading-relaxed text-muted-foreground">
+              {this.state.message}
+            </pre>
           )}
-          <Button onClick={() => window.location.reload()}>
-            <RefreshCw className="h-4 w-4" /> Reload
-          </Button>
+
+          <div className="mt-5 flex justify-end">
+            <Button size="sm" onClick={() => window.location.reload()}>
+              <RefreshCw className="h-3.5 w-3.5" />
+              Reload interface
+            </Button>
+          </div>
         </div>
       </div>
     );

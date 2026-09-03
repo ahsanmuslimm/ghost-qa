@@ -119,6 +119,15 @@ export interface ActionResult {
   [key: string]: unknown;
 }
 
+// Response of GET / — reports which run mode the backend is serving.
+export interface SystemHealth {
+  status: string;
+  demo_mode: boolean;
+  execution_backend?: 'demo' | 'uipath' | 'mock' | string;
+  execution?: string;
+  app_env?: string;
+}
+
 // JWT payload issued by the backend (app/services/auth.py).
 export interface JwtPayload {
   sub: string;
