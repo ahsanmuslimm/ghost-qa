@@ -21,7 +21,9 @@ class GitHubService:
             "Authorization": f"token {self.token}",
             "Accept": "application/vnd.github.v3+json"
         }
-        self.demo_mode = settings.DEMO_MODE and (not self.token or self.token == "None")
+        # DEMO_MODE is authoritative: demo always uses fixtures, even when a
+        # real token is present in the environment (professional mode contract).
+        self.demo_mode = settings.DEMO_MODE
 
     def verify_signature(self, payload_bytes: bytes, signature_header: str) -> bool:
         if not self.webhook_secret or not signature_header:

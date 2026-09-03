@@ -108,9 +108,17 @@ app.include_router(alerts.router, prefix="/alertmanager", tags=["alerts"])
 
 @app.get("/")
 def health():
+    from app.services.executor import resolve_execution_backend
+    backend = resolve_execution_backend()
     return {
         "status": "Ghost QA running",
         "demo_mode": settings.DEMO_MODE,
+        "execution_backend": backend,
+        "execution": {
+            "demo": "demo mode — all external services mocked",
+            "uipath": "live — UiPath Test Cloud execution",
+            "mock": "live integrations — built-in executor (UiPath Test Cloud not enabled)",
+        }[backend],
         "app_env": settings.APP_ENV
     }
 
@@ -130,7 +138,14 @@ def report_page(run_id: str, request: Request):
 def on_startup():
     init_db()
     seed_initial_data()
-    logger.info(f"Ghost QA started in {settings.APP_ENV} mode (DEMO_MODE={settings.DEMO_MODE})")
+    from app.services.executor import resolve_execution_backend
+    backend = resolve_execution_backend()
+    mode_label = {
+        "demo": "DEMO MODE (all external services mocked — no credentials needed)",
+        "uipath": "LIVE MODE (real integrations, UiPath Test Cloud execution)",
+        "mock": "LIVE MODE (real integrations, built-in executor — set UIPATH_EXECUTION=cloud with a Test Manager license for real execution)",
+    }[backend]
+    logger.info(f"Ghost QA started in {settings.APP_ENV} — {mode_label}")
 
 
 if __name__ == "__main__":

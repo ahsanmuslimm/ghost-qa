@@ -51,6 +51,11 @@ class Settings(BaseSettings):
     UIPATH_ORG_ID: Optional[str] = None
     UIPATH_ENVIRONMENT_ID: Optional[str] = None
     UIPATH_TEST_FOLDER: str = "GhostQA"
+    # Execution backend: "auto" = UiPath Test Cloud when all credentials are
+    # present, otherwise the built-in mock executor; "cloud" = force UiPath;
+    # "mock" = always use the built-in executor (e.g. UiPath free plan without
+    # Test Manager). Mock execution is a first-class mode, not a failure state.
+    UIPATH_EXECUTION: str = "auto"
     UIPATH_EXECUTION_TIMEOUT_SECONDS: int = 300
     UIPATH_TEST_MANAGER_BASE: str = "https://cloud.uipath.com"
     # Empty = auto-build org-scoped endpoint:

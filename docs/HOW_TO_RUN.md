@@ -12,6 +12,20 @@ Slack/UiPath Action Center get notified. Prometheus + Grafana observe it all.
 
 ---
 
+## Choosing your run mode (decide this first)
+
+| Question | Answer | What to do |
+|----------|--------|-----------|
+| Just evaluating / demoing, no budget? | **Demo Mode** (free) | keep `DEMO_MODE=true` (the `.env.example` default) — no credentials at all; every stage works on realistic fixtures |
+| Have real credentials (GitHub, Gemini, Slack)? | **Live Mode** | set `DEMO_MODE=false`, fill `.env` (see README → "Quickstart — Live Mode"), verify with `python scripts/validate_credentials.py` |
+| On the UiPath **free plan** (no Test Manager license)? | Live Mode + built-in executor | set `UIPATH_EXECUTION=mock` — GitHub/AI/Slack stay real, execution uses the built-in executor |
+| Have a UiPath Test Manager license? | Full Live Mode | set `UIPATH_EXECUTION=cloud` + all `UIPATH_*` credentials |
+
+The mode you are actually in is always visible: startup log line and
+`GET /` → `demo_mode` + `execution_backend` (`demo` | `uipath` | `mock`).
+
+---
+
 ## Stage 0 — Prerequisites
 
 | Tool | Version | Check |

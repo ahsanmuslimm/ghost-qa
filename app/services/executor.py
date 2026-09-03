@@ -402,20 +402,51 @@ class UiPathExecutor:
         return results
 
 
+def uipath_credentials_complete() -> bool:
+    """True when every UiPath credential needed for Test Cloud is configured."""
+    return all([
+        settings.UIPATH_CLIENT_ID,
+        settings.UIPATH_CLIENT_SECRET,
+        settings.UIPATH_TENANT_NAME,
+        settings.UIPATH_ORG_ID,
+        settings.UIPATH_ENVIRONMENT_ID,
+    ])
+
+
+def resolve_execution_backend() -> str:
+    """Return the active execution backend: "demo", "uipath" or "mock".
+
+    Honors UIPATH_EXECUTION (auto|cloud|mock) so a live deployment without a
+    Test Manager license (e.g. UiPath free plan) is an explicit, professional
+    configuration — not a silent failure.
+    """
+    if settings.DEMO_MODE:
+        return "demo"
+    mode = (settings.UIPATH_EXECUTION or "auto").lower()
+    if mode == "mock":
+        return "mock"
+    if mode == "cloud":
+        return "uipath"
+    return "uipath" if uipath_credentials_complete() else "mock"
+
+
 class ExecutorService:
     def __init__(self):
         self.mock_executor = MockExecutor()
         self.uipath_executor = UiPathExecutor()
-        self.demo_mode = settings.DEMO_MODE or not all([
-            settings.UIPATH_CLIENT_ID,
-            settings.UIPATH_CLIENT_SECRET,
-            settings.UIPATH_TENANT_NAME,
-            settings.UIPATH_ORG_ID,
-            settings.UIPATH_ENVIRONMENT_ID
-        ])
+        self.backend = resolve_execution_backend()
+        self.demo_mode = self.backend == "demo"
+        if self.backend == "mock":
+            logger.info(
+                "Execution backend: built-in mock executor "
+                "(UIPATH_EXECUTION=%s, credentials complete: %s)",
+                settings.UIPATH_EXECUTION, uipath_credentials_complete(),
+            )
+        elif self.backend == "uipath":
+            logger.info("Execution backend: UiPath Test Cloud")
 
     def execute_tests(self, test_cases: List[TestCase]) -> List[TestResult]:
-        executor = self.mock_executor if self.demo_mode else self.uipath_executor
+        executor = self.uipath_executor if self.backend == "uipath" else self.mock_executor
         return executor.execute_batch(test_cases)
 
     def store_results(self, results: List[TestResult], heal_attempt_id: Optional[str] = None) -> None:
