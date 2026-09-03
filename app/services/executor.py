@@ -113,13 +113,18 @@ class UiPathExecutor:
             return self.access_token
 
         try:
+            # Org-scoped identity endpoint (identity_ with underscore) per
+            # UiPath Automation Cloud docs; the global URL 302s to /unregistered
+            auth_url = settings.UIPATH_AUTH_URL or (
+                f"{settings.UIPATH_TEST_MANAGER_BASE}/{self.org_id}/identity_/connect/token"
+            )
             resp = requests.post(
-                "https://cloud.uipath.com/identity/connect/token",
+                auth_url,
                 data={
                     "grant_type": "client_credentials",
                     "client_id": self.client_id,
                     "client_secret": self.client_secret,
-                    "scope": "OR.AuthAPI"
+                    "scope": settings.UIPATH_TOKEN_SCOPE
                 },
                 headers={"Content-Type": "application/x-www-form-urlencoded"},
                 timeout=15,

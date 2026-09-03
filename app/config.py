@@ -53,11 +53,21 @@ class Settings(BaseSettings):
     UIPATH_TEST_FOLDER: str = "GhostQA"
     UIPATH_EXECUTION_TIMEOUT_SECONDS: int = 300
     UIPATH_TEST_MANAGER_BASE: str = "https://cloud.uipath.com"
-    UIPATH_AUTH_URL: str = "https://cloud.uipath.com/identity/connect/token"
+    # Empty = auto-build org-scoped endpoint:
+    # {UIPATH_TEST_MANAGER_BASE}/{UIPATH_ORG_ID}/identity_/connect/token
+    UIPATH_AUTH_URL: str = ""
+    # Space-separated scopes requested at token time; must be a subset of the
+    # scopes granted to the external app (verified live: OR.Folders.Read works,
+    # OR.AuthAPI is NOT granted by default). Add TM./OR.Jobs scopes here after
+    # granting them in Admin -> External Applications.
+    UIPATH_TOKEN_SCOPE: str = "OR.Folders.Read"
 
     # Slack (optional)
     SLACK_BOT_TOKEN: Optional[str] = None
     SLACK_CHANNEL: str = "ghost-qa-alerts"
+
+    # Alertmanager webhook relay — shared bearer secret; empty disables the endpoint
+    ALERTMANAGER_WEBHOOK_SECRET: str = ""
 
     # Security
     SECRET_KEY: str = "change-me-in-production"

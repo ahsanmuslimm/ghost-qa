@@ -5,7 +5,7 @@ from fastapi.templating import Jinja2Templates
 from slowapi.errors import RateLimitExceeded
 from app.config import settings
 from app.database import init_db, seed_initial_data
-from app.api import webhooks, runs, tests, heals, dashboard, auth, orgs, users
+from app.api import webhooks, runs, tests, heals, dashboard, auth, orgs, users, alerts
 from app.middleware.auth import JWTMiddleware
 from app.middleware.security_headers import SecurityHeadersMiddleware
 from app.monitoring.metrics import metrics_middleware
@@ -102,6 +102,8 @@ app.include_router(dashboard.router, prefix="/api/dashboard", tags=["dashboard"]
 app.include_router(auth.router, prefix="/auth", tags=["auth"])
 app.include_router(orgs.router, prefix="/api/orgs", tags=["orgs"])
 app.include_router(users.router, prefix="/api/users", tags=["users"])
+# Alert relay — outside /api (no JWT); bearer-secret protected instead
+app.include_router(alerts.router, prefix="/alertmanager", tags=["alerts"])
 
 
 @app.get("/")

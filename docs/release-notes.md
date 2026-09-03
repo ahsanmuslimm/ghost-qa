@@ -30,8 +30,9 @@
 2. UiPath Test Cloud and live AI providers (Gemini/Anthropic/XAI) verified in
    demo mode only — first production run with real credentials should be
    supervised.
-3. No Alertmanager wired yet — Prometheus alert rules exist but need a
-   delivery target (see `monitoring/prometheus.yml`).
+3. ~~No Alertmanager wired yet~~ **Resolved (2026-09-03):** Alertmanager
+   service added to the prod compose stack; alerts route through the
+   `/alertmanager/webhook` relay to Slack (see `monitoring/alertmanager/`).
 4. ELK-style log aggregation deferred; logs go to stdout for container
    log shippers.
 
@@ -48,7 +49,6 @@
 
 ### Next iteration candidates
 
-- Wire Alertmanager → Slack for production alert delivery
 - Token refresh flow for the frontend
 - Scheduled re-runs of failed pipelines
 - Real load-test campaign results at 100 concurrent users

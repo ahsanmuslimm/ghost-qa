@@ -1,0 +1,42 @@
+# Alertmanager — routes Prometheus alerts to the Ghost QA relay endpoint,
+# which forwards them to Slack via the existing bot token.
+#
+# The bearer secret is injected as a file by docker compose
+# (secrets: ALERTMANAGER_WEBHOOK_SECRET) or a k8s secret volume, so the
+# value never lives in this file.
+
+global:
+  resolve_timeout: 5m
+
+route:
+  receiver: ghost-qa-slack
+  group_by: ["alertname", "severity"]
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 4h
+  routes:
+    # Critical alerts skip grouping delays
+    - matchers:
+        - severity="critical"
+      receiver: ghost-qa-slack
+      group_wait: 10s
+      repeat_interval: 1h
+
+receivers:
+  - name: ghost-qa-slack
+    webhook_configs:
+      - url: http://ghost-qa:8000/alertmanager/webhook
+        send_resolved: true
+        max_alerts: 10
+        http_config:
+          authorization:
+            type: Bearer
+            credentials_file: /run/secrets/alertmanager_bearer
+
+inhibit_rules:
+  # Silence warnings for a target while a critical alert fires on it
+  - source_matchers:
+      - severity="critical"
+    target_matchers:
+      - severity=~"warning|info"
+    equal: ["alertname"]

@@ -1,0 +1,18 @@
+{
+  "version": "4",
+  "status": "firing",
+  "groupKey": "{}:{alertname=\"HighErrorRate\"}",
+  "receiver": "ghost-qa-slack",
+  "alerts": [
+    {
+      "status": "firing",
+      "labels": {"alertname": "HighErrorRate", "severity": "critical"},
+      "annotations": {
+        "summary": "Ghost QA 5xx error rate above 5%",
+        "description": "More than 5% of requests are failing."
+      },
+      "startsAt": "2026-09-03T10:00:00Z",
+      "generatorURL": "http://prometheus:9090/graph"
+    }
+  ]
+}

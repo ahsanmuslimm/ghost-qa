@@ -69,7 +69,13 @@ balancer, and set `CORS_ORIGINS` to the public origin.
   — restrict network access to it in production.
 - **Prometheus** (`monitoring/prometheus.yml`) scrapes the API every 15s, 15-day retention.
 - **Alerts** (`monitoring/alerts.yml`): HighErrorRate (>5% 5xx), HighLatencyP95 (>2s),
-  InstanceDown. Wire an Alertmanager target in `prometheus.yml` to deliver them.
+  InstanceDown. Delivery path: Prometheus → **Alertmanager**
+  (`monitoring/alertmanager/alertmanager.yml`, port 9093) → `POST /alertmanager/webhook`
+  on the API → Slack via the existing bot token. The relay authenticates
+  Alertmanager with a bearer secret (`ALERTMANAGER_WEBHOOK_SECRET`), injected into
+  the Alertmanager container as `/run/secrets/alertmanager_bearer` via a compose
+  file secret — set it in `.env`, never commit the value. Test the relay with
+  `scripts/sample_alert.json` (see `HOW_TO_RUN.md` Stage 8).
 - **Grafana:** auto-provisioned Prometheus datasource and the "Ghost QA Overview"
   dashboard (request rate, 5xx %, latency percentiles, active requests).
 - **Logs:** structured-ish single-line format to stdout; collect with

@@ -48,7 +48,10 @@ class AIBrainService:
                 base_url="https://api.x.ai/v1"
             )
         elif xai_key:
-            logger.warning(f"XAI API key format unrecognized, falling back to demo mode")
+            if not _has_openai:
+                logger.warning("openai package not installed; XAI unavailable")
+            else:
+                logger.warning("XAI API key format unrecognized, falling back to demo mode")
 
         # Anthropic Claude fallback — key must start with 'sk-ant-'
         anthropic_key = settings.ANTHROPIC_API_KEY
@@ -226,12 +229,21 @@ Return ONLY this JSON structure, nothing else:
         tests = []
         for t in data.get("tests", []):
             try:
+                # Live models sometimes emit structured step values (dict/list);
+                # the schema is string-typed, so serialize instead of dropping tests
+                steps = []
+                for s in t.get("steps", []):
+                    s = dict(s)
+                    for field in ("action", "selector", "value", "assertion"):
+                        if s.get(field) is not None and not isinstance(s[field], str):
+                            s[field] = json.dumps(s[field], default=str)
+                    steps.append(TestStepSchema(**s))
                 tests.append(TestCaseSchema(
                     id=t.get("id", f"TC-{len(tests)+1:03d}"),
                     title=t.get("title", "Untitled test"),
                     type=TestType(t.get("type", "functional")),
                     priority=TestPriority(t.get("priority", "p2_medium")),
-                    steps=[TestStepSchema(**s) for s in t.get("steps", [])],
+                    steps=steps,
                     expected_result=t.get("expected_result"),
                     risk_level=RiskLevel(t.get("risk_level", "medium")),
                     risk_rationale=t.get("risk_rationale")

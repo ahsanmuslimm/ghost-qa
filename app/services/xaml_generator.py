@@ -15,10 +15,10 @@ class XamlGenerator:
         Returns:
             Well-formed XAML string
         """
-        test_id = test_case.get("id", "Unknown")
-        title = test_case.get("title", "Untitled")
-        steps = test_case.get("steps", [])
-        expected = test_case.get("expected_result", "")
+        test_id = test_case.get("id") or "Unknown"
+        title = test_case.get("title") or "Untitled"
+        steps = test_case.get("steps") or []
+        expected = test_case.get("expected_result") or ""
 
         # Define namespace mapping
         ET.register_namespace("mc", "http://schemas.openxmlformats.org/markup-compatibility/2006")
@@ -56,10 +56,18 @@ class XamlGenerator:
 
         # N × <ui:Sequence> elements
         for i, step in enumerate(steps, 1):
-            action = step.get("action", "")
-            selector = step.get("selector", "")
-            value = step.get("value", "")
-            assertion = step.get("assertion", "")
+            # AI providers may emit null or non-string field values; ElementTree
+            # raises "cannot serialize None" for attribute values, so coerce.
+            def _attr(field: str) -> str:
+                v = step.get(field)
+                if v is None:
+                    return ""
+                return v if isinstance(v, str) else str(v)
+
+            action = _attr("action")
+            selector = _attr("selector")
+            value = _attr("value")
+            assertion = _attr("assertion")
 
             seq = ET.SubElement(
                 activities,

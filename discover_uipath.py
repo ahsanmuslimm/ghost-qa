@@ -7,16 +7,20 @@ import sys
 import json
 import requests
 
-def get_access_token(client_id, client_secret, tenant_name="DefaultTenant"):
-    """Authenticate with UiPath and get access token."""
+def get_access_token(client_id, client_secret, tenant_name="DefaultTenant", org_id=""):
+    """Authenticate with UiPath and get access token (org-scoped identity_ endpoint)."""
     print("Authenticating with UiPath...")
+    url = (
+        f"https://cloud.uipath.com/{org_id}/identity_/connect/token" if org_id
+        else "https://cloud.uipath.com/identity/connect/token"
+    )
     resp = requests.post(
-        "https://cloud.uipath.com/identity/connect/token",
+        url,
         data={
             "grant_type": "client_credentials",
             "client_id": client_id,
             "client_secret": client_secret,
-            "scope": "OR.AuthAPI"
+            "scope": os.getenv("UIPATH_TOKEN_SCOPE", "OR.Folders.Read")
         },
         headers={"Content-Type": "application/x-www-form-urlencoded"},
         timeout=15,
@@ -49,7 +53,7 @@ if __name__ == "__main__":
         print("ERROR: UIPATH_CLIENT_ID and UIPATH_CLIENT_SECRET must be set in .env")
         sys.exit(1)
 
-    auth = get_access_token(client_id, client_secret, tenant_name)
+    auth = get_access_token(client_id, client_secret, tenant_name, org_id)
     if not auth:
         print("\n=== Cannot discover via API ===")
         print("The UiPath client credentials may not be configured for OAuth.")

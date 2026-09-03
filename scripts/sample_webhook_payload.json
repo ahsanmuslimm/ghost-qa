@@ -1,0 +1,23 @@
+{
+  "action": "opened",
+  "repository": {
+    "id": 123456789,
+    "name": "demo-app",
+    "full_name": "demo-org/demo-app",
+    "owner": {"login": "demo-org"},
+    "default_branch": "main"
+  },
+  "pull_request": {
+    "number": 42,
+    "title": "Add login endpoint",
+    "body": "Implements JWT login. Fixes #41",
+    "state": "open",
+    "head": {"sha": "0123456789abcdef0123456789abcdef01234567", "ref": "feature/login"},
+    "base": {"sha": "fedcba9876543210fedcba9876543210fedcba98", "ref": "main"},
+    "changed_files": 3,
+    "additions": 120,
+    "deletions": 15,
+    "html_url": "https://github.com/demo-org/demo-app/pull/42"
+  },
+  "sender": {"login": "dev-user"}
+}

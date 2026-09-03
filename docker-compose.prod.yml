@@ -67,6 +67,20 @@ services:
     ports:
       - "9090:9090"
 
+  alertmanager:
+    image: prom/alertmanager:v0.27.0
+    restart: unless-stopped
+    command:
+      - --config.file=/etc/alertmanager/alertmanager.yml
+      - --storage.path=/alertmanager
+    secrets:
+      - alertmanager_bearer
+    volumes:
+      - ./monitoring/alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+      - amdata:/alertmanager
+    ports:
+      - "9093:9093"
+
   grafana:
     image: grafana/grafana:11.1.0
     restart: unless-stopped
@@ -86,3 +100,9 @@ volumes:
   pgdata:
   promdata:
   grafanadata:
+  amdata:
+
+# Injected into the alertmanager container as /run/secrets/alertmanager_bearer
+secrets:
+  alertmanager_bearer:
+    environment: ALERTMANAGER_WEBHOOK_SECRET
